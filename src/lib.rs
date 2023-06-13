@@ -1,6 +1,8 @@
 use beancount_parser_2 as parser;
 use std::collections::{HashMap, HashSet};
 
+mod format;
+
 #[derive(Debug)]
 pub struct BeancountFile<D> {
     pub directives: Vec<Directive<D>>,
@@ -123,7 +125,11 @@ impl<D> From<parser::Directive<'_, D>> for Directive<D> {
         Directive {
             date: d.date,
             content: d.content.into(),
-            metadata: HashMap::new(),
+            metadata: d
+                .metadata
+                .into_iter()
+                .map(|(key, value)| (key.to_owned(), value.into()))
+                .collect(),
         }
     }
 }
