@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "*"
-beancount_parser_2 = '1.0.0-alpha.8'
+beancount_parser_2 = '1.0.0-alpha.9'
 rust_decimal = "*"
