@@ -1,4 +1,5 @@
 use crate::*;
+use itertools::Itertools;
 
 fn sorted_hashset(h: &HashSet<String>) -> Vec<String> {
     let mut v = h.clone().into_iter().collect::<Vec<_>>();
@@ -87,7 +88,7 @@ where
             }
             _ => unimplemented!(),
         };
-        for (key, value) in &self.metadata {
+        for (key, value) in self.metadata.iter().sorted_by_key(|x| x.0) {
             write!(f, "  {}: {}\n", key, value)?;
         }
         if let DirectiveContent::Transaction(t) = &self.content {
@@ -122,7 +123,7 @@ where
             None => (),
         };
         write!(f, "\n")?;
-        for (key, value) in &self.metadata {
+        for (key, value) in self.metadata.iter().sorted_by_key(|x| x.0) {
             write!(f, "    {}: {}\n", key, value)?;
         }
         Ok(())

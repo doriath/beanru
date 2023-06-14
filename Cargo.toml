@@ -9,3 +9,4 @@ edition = "2021"
 anyhow = "*"
 beancount_parser_2 = '1.0.0-alpha.10'
 rust_decimal = "*"
+itertools = "*"
