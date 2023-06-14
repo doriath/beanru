@@ -122,6 +122,9 @@ where
             None => (),
         };
         write!(f, "\n")?;
+        for (key, value) in &self.metadata {
+            write!(f, "    {}: {}\n", key, value)?;
+        }
         Ok(())
     }
 }

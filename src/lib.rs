@@ -60,6 +60,7 @@ pub struct Posting<D> {
     pub amount: Option<Amount<D>>,
     pub cost: Option<Cost<D>>,
     pub price: Option<PostingPrice<D>>,
+    pub metadata: HashMap<String, MetadataValue<D>>,
 }
 
 #[derive(Debug)]
@@ -240,6 +241,11 @@ impl<D> From<parser::Posting<'_, D>> for Posting<D> {
             amount: v.amount.map(|x| x.into()),
             cost: v.cost.map(|x| x.into()),
             price: v.price.map(|x| x.into()),
+            metadata: v
+                .metadata
+                .into_iter()
+                .map(|(key, value)| (key.to_owned(), value.into()))
+                .collect(),
         }
     }
 }
