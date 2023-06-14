@@ -105,7 +105,11 @@ where
     D: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "  {}", self.account)?;
+        match self.flag {
+            Some(parser::Flag::Completed) => write!(f, "  * {}", self.account)?,
+            Some(parser::Flag::Incomplete) => write!(f, "  ! {}", self.account)?,
+            None => write!(f, "  {}", self.account)?,
+        }
         if let Some(amount) = &self.amount {
             write!(f, " {}", amount)?;
         }
