@@ -52,7 +52,11 @@ where
                     .map(|x| x.0)
                     .collect::<Vec<_>>();
                 currencies.sort();
-                write!(f, "open {} {}\n", x.account, currencies.join(","))?;
+                write!(f, "open {}", x.account)?;
+                if !currencies.is_empty() {
+                    write!(f, " {}", currencies.join(","))?;
+                }
+                write!(f, "\n")?;
             }
             DirectiveContent::Pad(x) => {
                 write!(f, "pad {} {}\n", x.account, x.source_account)?;
