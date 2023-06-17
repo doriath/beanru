@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "*"
-beancount_parser_2 = '1.0.0-alpha.10'
+beancount_parser_2 = '1.0.0-alpha.11'
 rust_decimal = "*"
 itertools = "*"

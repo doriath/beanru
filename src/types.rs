@@ -91,7 +91,7 @@ pub struct Price<D> {
     pub amount: Amount<D>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Amount<D> {
     pub value: D,
     pub currency: Currency,
