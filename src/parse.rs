@@ -2,7 +2,7 @@ use beancount_parser_2 as parser;
 use crate::types::*;
 
 pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decimal>> {
-    let beancount = match parser::parse::<rust_decimal::Decimal>(&content) {
+    let beancount = match parser::parse::<rust_decimal::Decimal>(content) {
         Ok(b) => b,
         Err(err) => anyhow::bail!("failed to parse the beancount file: {:?}", err),
     };

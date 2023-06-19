@@ -38,13 +38,13 @@ where
         )?;
         match &self.content {
             DirectiveContent::Balance(x) => {
-                write!(f, "balance {} {}\n", x.account, x.amount)?;
+                writeln!(f, "balance {} {}", x.account, x.amount)?;
             }
             DirectiveContent::Close(x) => {
-                write!(f, "close {}\n", x.account)?;
+                writeln!(f, "close {}", x.account)?;
             }
             DirectiveContent::Commodity(x) => {
-                write!(f, "commodity {}\n", x)?;
+                writeln!(f, "commodity {}", x)?;
             }
             DirectiveContent::Open(x) => {
                 let mut currencies = x
@@ -58,13 +58,13 @@ where
                 if !currencies.is_empty() {
                     write!(f, " {}", currencies.join(","))?;
                 }
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
             DirectiveContent::Pad(x) => {
-                write!(f, "pad {} {}\n", x.account, x.source_account)?;
+                writeln!(f, "pad {} {}", x.account, x.source_account)?;
             }
             DirectiveContent::Price(x) => {
-                write!(f, "price {} {}\n", x.currency, x.amount)?;
+                writeln!(f, "price {} {}", x.currency, x.amount)?;
             }
             DirectiveContent::Transaction(t) => {
                 match t.flag {
@@ -90,12 +90,12 @@ where
                 for link in sorted_hashset(&t.links) {
                     write!(f, " ^{}", link)?;
                 }
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
             _ => unimplemented!(),
         };
         for (key, value) in self.metadata.iter().sorted_by_key(|x| x.0) {
-            write!(f, "  {}: {}\n", key, value)?;
+            writeln!(f, "  {}: {}", key, value)?;
         }
         if let DirectiveContent::Transaction(t) = &self.content {
             for posting in &t.postings {
@@ -132,9 +132,9 @@ where
             }
             None => (),
         };
-        write!(f, "\n")?;
+        writeln!(f)?;
         for (key, value) in self.metadata.iter().sorted_by_key(|x| x.0) {
-            write!(f, "    {}: {}\n", key, value)?;
+            writeln!(f, "    {}: {}", key, value)?;
         }
         Ok(())
     }

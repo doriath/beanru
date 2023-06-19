@@ -12,7 +12,7 @@ pub fn check(file: &BeancountFile<rust_decimal::Decimal>) -> anyhow::Result<()> 
             DirectiveContent::Transaction(t) => t,
             _ => continue,
         };
-        check_transaction(&t)?;
+        check_transaction(t)?;
     }
     Ok(())
 }
@@ -59,7 +59,7 @@ fn check_transaction(t: &Transaction<rust_decimal::Decimal>) -> anyhow::Result<(
     let mut amounts: HashMap<Currency, rust_decimal::Decimal> = HashMap::new();
     let mut no_amount_count = 0;
     for posting in &t.postings {
-        match posting_amount_to_balance(&posting) {
+        match posting_amount_to_balance(posting) {
             Some(amount) => {
                 *amounts.entry(amount.currency.clone()).or_insert(0.into()) += amount.value
             }

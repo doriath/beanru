@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use bean::types::Currency;
+use clap::{Parser, Subcommand};
 
 /// Program for processing beancount files.
 #[derive(Parser)]
@@ -15,11 +15,16 @@ enum Commands {
     ///
     /// It reads the beancount file, and then writes it in a standard format used by other
     /// subcommands.
-    Normalize { input: String },
+    Normalize {
+        input: String,
+
+        #[arg(short, long, default_value_t = false)]
+        in_place: bool,
+    },
     /// Checks if all transactions are properly balanced.
     Check { input: String },
     /// Performs stock split.
-    StockSplit { 
+    StockSplit {
         /// The path to beancount file.
         input: String,
         /// The commodity that is being split.
@@ -32,22 +37,30 @@ enum Commands {
     },
 }
 
-
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Normalize { input } => {
-            let content = std::fs::read_to_string(input)?;
+        Commands::Normalize { input, in_place } => {
+            let content = std::fs::read_to_string(&input)?;
             let beancount = bean::parse(&content)?;
-            println!("{}", beancount);
+            if in_place {
+                std::fs::write(&input, beancount.to_string())?;
+            } else {
+                println!("{}", beancount);
+            }
         }
         Commands::Check { input } => {
             let content = std::fs::read_to_string(input)?;
             let beancount = bean::parse(&content)?;
             bean::check(&beancount)?;
         }
-        Commands::StockSplit { input, commodity, ratio, in_place } => {
+        Commands::StockSplit {
+            input,
+            commodity,
+            ratio,
+            in_place,
+        } => {
             let content = std::fs::read_to_string(&input)?;
             let mut beancount = bean::parse(&content)?;
             bean::split_stock(&mut beancount, &Currency(commodity), ratio)?;

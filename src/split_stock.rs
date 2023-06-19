@@ -25,8 +25,8 @@ pub fn split_stock(
                 price.amount.value /= ratio;
             }
             DirectiveContent::Transaction(t) => {
-                for mut posting in &mut t.postings {
-                    split_stock_posting(&mut posting, commodity, ratio)?;
+                for posting in &mut t.postings {
+                    split_stock_posting(posting, commodity, ratio)?;
                 }
             }
         }
@@ -40,7 +40,7 @@ pub fn split_stock_posting(
     commodity: &Currency,
     ratio: rust_decimal::Decimal,
 ) -> anyhow::Result<()> {
-    let mut amount = match &mut posting.amount {
+    let amount = match &mut posting.amount {
         Some(amount) => amount,
         None => return Ok(()),
     };
