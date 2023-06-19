@@ -13,6 +13,7 @@ pub struct Directive<D> {
     pub metadata: HashMap<String, MetadataValue<D>>,
 }
 
+// TODO: rename to Commodifty
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Currency(pub String);
 

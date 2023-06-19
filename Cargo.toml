@@ -1,5 +1,5 @@
 [package]
-name = "beancount-exp"
+name = "bean"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 anyhow = "*"
 beancount_parser_2 = '1.0.0-alpha.11'
-rust_decimal = "*"
+clap = { version = "4.3.4", features = ["derive"] }
 itertools = "*"
+rust_decimal = "*"

@@ -1,79 +1,62 @@
-use std::collections::HashMap;
-use rust_decimal::Decimal;
-use beancount_exp::types::*;
+use clap::{Parser, Subcommand};
+use bean::types::Currency;
 
-fn check(file: &BeancountFile<rust_decimal::Decimal>) -> anyhow::Result<()> {
-    for d in &file.directives {
-        let t = match &d.content {
-            DirectiveContent::Transaction(t) => t,
-            _ => continue,
-        };
-        check_transaction(&t)?;
-    }
-    Ok(())
+/// Program for processing beancount files.
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(subcommand)]
+    command: Commands,
 }
 
-fn posting_amount_to_balance(
-    posting: &Posting<rust_decimal::Decimal>,
-) -> Option<Amount<rust_decimal::Decimal>> {
-    let amount = match &posting.amount {
-        Some(amount) => amount,
-        None => return None,
-    };
-    let sign = if amount.value.is_sign_positive() { Decimal::ONE } else { Decimal::NEGATIVE_ONE };
-    if let Some(cost) = &posting.cost {
-        if let Some(cost_amount) = &cost.amount {
-            return Some(Amount {
-                value: amount.value * cost_amount.value,
-                currency: cost_amount.currency.clone(),
-            })
+#[derive(Subcommand)]
+enum Commands {
+    /// Normalizes beancount file
+    ///
+    /// It reads the beancount file, and then writes it in a standard format used by other
+    /// subcommands.
+    Normalize { input: String },
+    /// Checks if all transactions are properly balanced.
+    Check { input: String },
+    /// Performs stock split.
+    StockSplit { 
+        /// The path to beancount file.
+        input: String,
+        /// The commodity that is being split.
+        commodity: String,
+        /// The ratio of the split. For example, if set to 2, it means that every 1 share of the
+        /// stock now becomes 2.
+        ratio: rust_decimal::Decimal,
+        #[arg(short, long, default_value_t = false)]
+        in_place: bool,
+    },
+}
+
+
+fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
+    match args.command {
+        Commands::Normalize { input } => {
+            let content = std::fs::read_to_string(input)?;
+            let beancount = bean::parse(&content)?;
+            println!("{}", beancount);
         }
-    }
-    match &posting.price {
-        Some(PostingPrice::Unit(price_amount)) => return Some(Amount {
-            value: amount.value * price_amount.value,
-            currency: price_amount.currency.clone(),
-        }),
-        Some(PostingPrice::Total(price_amount)) => return Some(Amount {
-            value: price_amount.value * sign,
-            currency: price_amount.currency.clone(),
-        }),
-        _ => (),
-    }
-    Some(amount.clone())
-}
-
-fn check_transaction(t: &Transaction<rust_decimal::Decimal>) -> anyhow::Result<()> {
-    let mut amounts: HashMap<Currency, rust_decimal::Decimal> = HashMap::new();
-    let mut no_amount_count = 0;
-    for posting in &t.postings {
-        match posting_amount_to_balance(&posting) {
-            Some(amount) => {
-                *amounts.entry(amount.currency.clone()).or_insert(0.into()) += amount.value
+        Commands::Check { input } => {
+            let content = std::fs::read_to_string(input)?;
+            let beancount = bean::parse(&content)?;
+            bean::check(&beancount)?;
+        }
+        Commands::StockSplit { input, commodity, ratio, in_place } => {
+            let content = std::fs::read_to_string(&input)?;
+            let mut beancount = bean::parse(&content)?;
+            bean::split_stock(&mut beancount, &Currency(commodity), ratio)?;
+            if in_place {
+                std::fs::write(&input, beancount.to_string())?;
+            } else {
+                println!("{}", beancount);
             }
-            None => no_amount_count += 1,
-        };
-    }
-    anyhow::ensure!(no_amount_count <= 1, "more than one posting without amount");
-    for (currency, amount) in amounts {
-        if amount == 0.into() {
-            continue;
         }
-        if no_amount_count == 0 {
-            println!("Transaction does not balance:\n{:?}\n{}: {}", t, currency, amount);
-        }
-        no_amount_count -= 1;
     }
-    // println!("{:?}", amounts);
     Ok(())
-}
-
-fn main() {
-    let mut args = std::env::args().skip(1);
-    let input = args.next().unwrap();
-    let content = std::fs::read_to_string(input).expect("should read file");
-    let beancount = beancount_exp::parse(&content).expect("failed to parse");
-    check(&beancount).unwrap();
-
-    // println!("{}", beancount);
 }
