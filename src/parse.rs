@@ -31,8 +31,8 @@ impl<D> From<parser::Directive<'_, D>> for Directive<D> {
     }
 }
 
-impl<D> From<parser::MetadataValue<'_, D>> for MetadataValue<D> {
-    fn from(v: parser::MetadataValue<'_, D>) -> Self {
+impl<D> From<parser::MetadataValue<D>> for MetadataValue<D> {
+    fn from(v: parser::MetadataValue<D>) -> Self {
         match v {
             parser::MetadataValue::String(x) => MetadataValue::String(x.to_owned()),
             parser::MetadataValue::Number(x) => MetadataValue::Number(x),
@@ -57,8 +57,8 @@ impl<D> From<parser::DirectiveContent<'_, D>> for DirectiveContent<D> {
     }
 }
 
-impl From<parser::Pad<'_>> for Pad {
-    fn from(v: parser::Pad<'_>) -> Self {
+impl From<parser::Pad> for Pad {
+    fn from(v: parser::Pad) -> Self {
         Self {
             account: v.account.into(),
             source_account: v.source_account.into(),
@@ -66,8 +66,8 @@ impl From<parser::Pad<'_>> for Pad {
     }
 }
 
-impl From<parser::Open<'_>> for Open {
-    fn from(v: parser::Open<'_>) -> Self {
+impl From<parser::Open> for Open {
+    fn from(v: parser::Open) -> Self {
         Self {
             account: v.account.into(),
             currencies: v.currencies.into_iter().map(|c| c.into()).collect(),
@@ -84,22 +84,22 @@ impl From<parser::Event<'_>> for Event {
     }
 }
 
-impl From<parser::Close<'_>> for Close {
-    fn from(v: parser::Close<'_>) -> Self {
+impl From<parser::Close> for Close {
+    fn from(v: parser::Close) -> Self {
         Self {
             account: v.account.into(),
         }
     }
 }
 
-impl From<parser::Account<'_>> for Account {
-    fn from(v: parser::Account<'_>) -> Self {
+impl From<parser::Account> for Account {
+    fn from(v: parser::Account) -> Self {
         Account(v.as_str().to_owned())
     }
 }
 
-impl<D> From<parser::Price<'_, D>> for Price<D> {
-    fn from(v: parser::Price<'_, D>) -> Self {
+impl<D> From<parser::Price<D>> for Price<D> {
+    fn from(v: parser::Price<D>) -> Self {
         Self {
             currency: v.currency.into(),
             amount: v.amount.into(),
@@ -107,8 +107,8 @@ impl<D> From<parser::Price<'_, D>> for Price<D> {
     }
 }
 
-impl<D> From<parser::Balance<'_, D>> for Balance<D> {
-    fn from(v: parser::Balance<'_, D>) -> Self {
+impl<D> From<parser::Balance<D>> for Balance<D> {
+    fn from(v: parser::Balance<D>) -> Self {
         Self {
             account: v.account.into(),
             amount: v.amount.into(),
@@ -146,8 +146,8 @@ impl<D> From<parser::Posting<'_, D>> for Posting<D> {
     }
 }
 
-impl<D> From<parser::Cost<'_, D>> for Cost<D> {
-    fn from(v: parser::Cost<'_, D>) -> Self {
+impl<D> From<parser::Cost<D>> for Cost<D> {
+    fn from(v: parser::Cost<D>) -> Self {
         Self {
             amount: v.amount.map(|x| x.into()),
             date: v.date,
@@ -155,8 +155,8 @@ impl<D> From<parser::Cost<'_, D>> for Cost<D> {
     }
 }
 
-impl<D> From<parser::Amount<'_, D>> for Amount<D> {
-    fn from(v: parser::Amount<'_, D>) -> Self {
+impl<D> From<parser::Amount<D>> for Amount<D> {
+    fn from(v: parser::Amount<D>) -> Self {
         Self {
             value: v.value,
             currency: v.currency.into(),
@@ -164,8 +164,8 @@ impl<D> From<parser::Amount<'_, D>> for Amount<D> {
     }
 }
 
-impl<D> From<parser::PostingPrice<'_, D>> for PostingPrice<D> {
-    fn from(v: parser::PostingPrice<'_, D>) -> Self {
+impl<D> From<parser::PostingPrice<D>> for PostingPrice<D> {
+    fn from(v: parser::PostingPrice<D>) -> Self {
         match v {
             parser::PostingPrice::Unit(x) => PostingPrice::Unit(x.into()),
             parser::PostingPrice::Total(x) => PostingPrice::Total(x.into()),
@@ -173,8 +173,8 @@ impl<D> From<parser::PostingPrice<'_, D>> for PostingPrice<D> {
     }
 }
 
-impl From<parser::Currency<'_>> for Currency {
-    fn from(v: parser::Currency<'_>) -> Self {
+impl From<parser::Currency> for Currency {
+    fn from(v: parser::Currency) -> Self {
         Currency(v.as_str().to_owned())
     }
 }

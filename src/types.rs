@@ -44,7 +44,7 @@ pub struct Event {
 
 #[derive(Debug)]
 pub struct Transaction<D> {
-    pub flag: Option<parser::Flag>,
+    pub flag: Option<char>,
     pub payee: Option<String>,
     pub narration: Option<String>,
     pub tags: HashSet<String>,
@@ -54,7 +54,7 @@ pub struct Transaction<D> {
 
 #[derive(Debug)]
 pub struct Posting<D> {
-    pub flag: Option<parser::Flag>,
+    pub flag: Option<char>,
     pub account: Account,
     pub amount: Option<Amount<D>>,
     pub cost: Option<Cost<D>>,

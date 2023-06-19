@@ -1,5 +1,4 @@
 use crate::types::*;
-use beancount_parser_2 as parser;
 use itertools::Itertools;
 use std::collections::HashSet;
 
@@ -67,17 +66,7 @@ where
                 writeln!(f, "price {} {}", x.currency, x.amount)?;
             }
             DirectiveContent::Transaction(t) => {
-                match t.flag {
-                    Some(beancount_parser_2::Flag::Completed) => {
-                        write!(f, "*")?;
-                    }
-                    Some(beancount_parser_2::Flag::Incomplete) => {
-                        write!(f, "!")?;
-                    }
-                    None => {
-                        write!(f, "*")?;
-                    }
-                }
+                write!(f, "{}", t.flag.unwrap_or('*'))?;
                 if let Some(payee) = &t.payee {
                     write!(f, " {}", quote(payee))?;
                 }
@@ -112,8 +101,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.flag {
-            Some(parser::Flag::Completed) => write!(f, "  * {}", self.account)?,
-            Some(parser::Flag::Incomplete) => write!(f, "  ! {}", self.account)?,
+            Some(c) => write!(f, "  {} {}", c, self.account)?,
             None => write!(f, "  {}", self.account)?,
         }
         if let Some(amount) = &self.amount {
