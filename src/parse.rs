@@ -34,7 +34,7 @@ impl<D> From<parser::Directive<'_, D>> for Directive<D> {
 impl<D> From<parser::MetadataValue<D>> for MetadataValue<D> {
     fn from(v: parser::MetadataValue<D>) -> Self {
         match v {
-            parser::MetadataValue::String(x) => MetadataValue::String(x.to_owned()),
+            parser::MetadataValue::String(x) => MetadataValue::String(x),
             parser::MetadataValue::Number(x) => MetadataValue::Number(x),
             parser::MetadataValue::Currency(x) => MetadataValue::Currency(x.into()),
             _ => unimplemented!("given metadata value type is not supported yet"),
