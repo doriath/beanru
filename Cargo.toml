@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "*"
-beancount_parser_2 = '^1.0.0-beta.2'
+beancount_parser_2 = '=1.0.0-beta.3'
 clap = { version = "4.3.4", features = ["derive"] }
 itertools = "*"
 rust_decimal = "*"

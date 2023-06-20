@@ -104,9 +104,9 @@ dependencies = [
 
 [[package]]
 name = "beancount_parser_2"
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31d0d368739352346fe143541bb590c6d5786613bcdef925c314463c11aaae51"
+checksum = "93ad9423ce1ffc55ccf2f19b2d6242f158c783d356a4fef78cbb6e7bedf79ef7"
 dependencies = [
  "nom",
  "nom_locate",
