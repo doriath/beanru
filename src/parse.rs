@@ -9,50 +9,51 @@ pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decima
     Ok(beancount.into())
 }
 
-impl<D> From<parser::BeancountFile<'_, D>> for BeancountFile<D>
+impl<D> From<parser::BeancountFile<D>> for BeancountFile<D>
 where
     D: Decimal,
 {
-    fn from(f: parser::BeancountFile<'_, D>) -> Self {
+    fn from(f: parser::BeancountFile<D>) -> Self {
         BeancountFile {
             directives: f.directives.into_iter().map(|d| d.into()).collect(),
         }
     }
 }
 
-impl<D> From<parser::Directive<'_, D>> for Directive<D>
+impl<D> From<parser::Directive<D>> for Directive<D>
 where
     D: Decimal,
 {
-    fn from(d: parser::Directive<'_, D>) -> Self {
+    fn from(d: parser::Directive<D>) -> Self {
         Directive {
             date: d.date,
             content: d.content.into(),
             metadata: d
                 .metadata
                 .into_iter()
-                .map(|(key, value)| (key.to_owned(), value.into()))
+                .map(|(key, value)| (key.to_string(), value.into()))
                 .collect(),
         }
     }
 }
 
-impl<D> From<parser::MetadataValue<D>> for MetadataValue<D> {
-    fn from(v: parser::MetadataValue<D>) -> Self {
+impl<D> From<parser::metadata::Value<D>> for MetadataValue<D> {
+    fn from(v: parser::metadata::Value<D>) -> Self {
         match v {
-            parser::MetadataValue::String(x) => MetadataValue::String(x),
-            parser::MetadataValue::Number(x) => MetadataValue::Number(x),
-            parser::MetadataValue::Currency(x) => MetadataValue::Currency(x.into()),
+            parser::metadata::Value::String(x) => MetadataValue::String(x.to_owned()),
+            parser::metadata::Value::Number(x) => MetadataValue::Number(x),
+            parser::metadata::Value::Currency(x) => MetadataValue::Currency(x.into()),
             _ => unimplemented!("given metadata value type is not supported yet"),
         }
     }
 }
 
-impl<D> From<parser::DirectiveContent<'_, D>> for DirectiveContent<D>
+impl<D> From<parser::DirectiveContent<D>> for DirectiveContent<D>
 where
     D: Decimal,
 {
-    fn from(v: parser::DirectiveContent<'_, D>) -> Self {
+    fn from(v: parser::DirectiveContent<D>) -> Self {
+
         match v {
             parser::DirectiveContent::Balance(x) => DirectiveContent::Balance(x.into()),
             parser::DirectiveContent::Close(x) => DirectiveContent::Close(x.into()),
@@ -84,8 +85,8 @@ impl From<parser::Open> for Open {
     }
 }
 
-impl From<parser::Event<'_>> for Event {
-    fn from(v: parser::Event<'_>) -> Self {
+impl From<parser::Event> for Event {
+    fn from(v: parser::Event) -> Self {
         Self {
             name: v.name.to_owned(),
             value: v.value.to_owned(),
@@ -125,17 +126,17 @@ impl<D> From<parser::Balance<D>> for Balance<D> {
     }
 }
 
-impl<D> From<parser::Transaction<'_, D>> for Transaction<D>
+impl<D> From<parser::Transaction<D>> for Transaction<D>
 where
     D: Decimal,
 {
-    fn from(v: parser::Transaction<'_, D>) -> Self {
+    fn from(v: parser::Transaction<D>) -> Self {
         let mut t = Self {
             flag: v.flag,
             payee: v.payee.map(String::from),
             narration: v.narration.map(String::from),
-            tags: v.tags.into_iter().map(|x| x.into()).collect(),
-            links: v.links.into_iter().map(|x| x.into()).collect(),
+            tags: v.tags.into_iter().map(|x| x.to_string()).collect(),
+            links: v.links.into_iter().map(|x| x.to_string()).collect(),
             postings: v.postings.into_iter().map(|x| x.into()).collect(),
             balanced: true,
         };
@@ -146,8 +147,8 @@ where
     }
 }
 
-impl<D> From<parser::Posting<'_, D>> for Posting<D> {
-    fn from(v: parser::Posting<'_, D>) -> Self {
+impl<D> From<parser::Posting<D>> for Posting<D> {
+    fn from(v: parser::Posting<D>) -> Self {
         Self {
             flag: v.flag,
             account: v.account.into(),
@@ -157,7 +158,7 @@ impl<D> From<parser::Posting<'_, D>> for Posting<D> {
             metadata: v
                 .metadata
                 .into_iter()
-                .map(|(key, value)| (key.to_owned(), value.into()))
+                .map(|(key, value)| (key.to_string(), value.into()))
                 .collect(),
             autocomputed: false,
         }
