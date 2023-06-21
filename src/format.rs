@@ -105,7 +105,9 @@ where
             None => write!(f, "  {}", self.account)?,
         }
         if let Some(amount) = &self.amount {
-            write!(f, " {}", amount)?;
+            if !self.autocomputed {
+                write!(f, " {}", amount)?;
+            }
         }
         match &self.price {
             Some(PostingPrice::Unit(amount)) => write!(f, " @ {}", amount)?,

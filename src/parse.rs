@@ -9,7 +9,10 @@ pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decima
     Ok(beancount.into())
 }
 
-impl<D> From<parser::BeancountFile<D>> for BeancountFile<D> {
+impl<D> From<parser::BeancountFile<D>> for BeancountFile<D>
+where
+    D: Decimal,
+{
     fn from(f: parser::BeancountFile<D>) -> Self {
         BeancountFile {
             directives: f.directives.into_iter().map(|d| d.into()).collect(),
@@ -17,7 +20,10 @@ impl<D> From<parser::BeancountFile<D>> for BeancountFile<D> {
     }
 }
 
-impl<D> From<parser::Directive<D>> for Directive<D> {
+impl<D> From<parser::Directive<D>> for Directive<D>
+where
+    D: Decimal,
+{
     fn from(d: parser::Directive<D>) -> Self {
         Directive {
             date: d.date,
@@ -42,8 +48,12 @@ impl<D> From<parser::metadata::Value<D>> for MetadataValue<D> {
     }
 }
 
-impl<D> From<parser::DirectiveContent<D>> for DirectiveContent<D> {
+impl<D> From<parser::DirectiveContent<D>> for DirectiveContent<D>
+where
+    D: Decimal,
+{
     fn from(v: parser::DirectiveContent<D>) -> Self {
+
         match v {
             parser::DirectiveContent::Balance(x) => DirectiveContent::Balance(x.into()),
             parser::DirectiveContent::Close(x) => DirectiveContent::Close(x.into()),
@@ -116,16 +126,24 @@ impl<D> From<parser::Balance<D>> for Balance<D> {
     }
 }
 
-impl<D> From<parser::Transaction<D>> for Transaction<D> {
+impl<D> From<parser::Transaction<D>> for Transaction<D>
+where
+    D: Decimal,
+{
     fn from(v: parser::Transaction<D>) -> Self {
-        Self {
+        let mut t = Self {
             flag: v.flag,
             payee: v.payee.map(String::from),
             narration: v.narration.map(String::from),
             tags: v.tags.into_iter().map(|x| x.to_string()).collect(),
             links: v.links.into_iter().map(|x| x.to_string()).collect(),
             postings: v.postings.into_iter().map(|x| x.into()).collect(),
+            balanced: true,
+        };
+        if let Err(_) = t.book() {
+            t.balanced = false
         }
+        t
     }
 }
 
@@ -142,6 +160,7 @@ impl<D> From<parser::Posting<D>> for Posting<D> {
                 .into_iter()
                 .map(|(key, value)| (key.to_string(), value.into()))
                 .collect(),
+            autocomputed: false,
         }
     }
 }
