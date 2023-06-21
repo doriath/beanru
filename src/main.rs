@@ -35,6 +35,12 @@ enum Commands {
         #[arg(short, long, default_value_t = false)]
         in_place: bool,
     },
+    Closing {
+        /// The path to beancount file.
+        input: String,
+        #[arg(short, long, default_value_t = false)]
+        in_place: bool,
+    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -64,6 +70,19 @@ fn main() -> anyhow::Result<()> {
             let content = std::fs::read_to_string(&input)?;
             let mut beancount = bean::parse(&content)?;
             bean::split_stock(&mut beancount, &Currency(commodity), ratio)?;
+            if in_place {
+                std::fs::write(&input, beancount.to_string())?;
+            } else {
+                println!("{}", beancount);
+            }
+        }
+        Commands::Closing {
+            input,
+            in_place,
+        } => {
+            let content = std::fs::read_to_string(&input)?;
+            let mut beancount = bean::parse(&content)?;
+            bean::closing(&mut beancount)?;
             if in_place {
                 std::fs::write(&input, beancount.to_string())?;
             } else {
