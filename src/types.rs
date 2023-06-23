@@ -1,15 +1,15 @@
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Debug,
+    fmt::{Debug, Display},
     ops::{Add, AddAssign, Div, Mul, Neg, Sub},
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BeancountFile<D> {
     pub directives: Vec<Directive<D>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Directive<D> {
     pub date: chrono::NaiveDate,
     pub content: DirectiveContent<D>,
@@ -20,32 +20,32 @@ pub struct Directive<D> {
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Currency(pub String);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetadataValue<D> {
     String(String),
     Number(D),
     Currency(Currency),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Pad {
     pub account: Account,
     pub source_account: Account,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Balance<D> {
     pub account: Account,
     pub amount: Amount<D>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Event {
     pub name: String,
     pub value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Transaction<D> {
     pub flag: Option<char>,
     pub payee: Option<String>,
@@ -56,7 +56,7 @@ pub struct Transaction<D> {
     pub balanced: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Posting<D> {
     pub flag: Option<char>,
     pub account: Account,
@@ -68,19 +68,19 @@ pub struct Posting<D> {
     pub autocomputed: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Cost<D> {
     pub amount: Option<Amount<D>>,
     pub date: Option<chrono::NaiveDate>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PostingPrice<D> {
     Unit(Amount<D>),
     Total(Amount<D>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum DirectiveContent<D> {
     Balance(Balance<D>),
     Close(Close),
@@ -92,35 +92,36 @@ pub enum DirectiveContent<D> {
     Transaction(Transaction<D>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Price<D> {
     pub currency: Currency,
     pub amount: Amount<D>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Amount<D> {
     pub value: D,
     pub currency: Currency,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Open {
     pub account: Account,
     pub currencies: HashSet<Currency>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Close {
     pub account: Account,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Account(pub String);
 
 pub trait Decimal:
     Clone
     + Debug
+    + Display
     + From<i32>
     + Add<Output = Self>
     + AddAssign
@@ -136,6 +137,7 @@ pub trait Decimal:
 impl<D> Decimal for D where
     D: Clone
         + Debug
+        + Display
         + From<i32>
         + Add<Output = Self>
         + AddAssign
