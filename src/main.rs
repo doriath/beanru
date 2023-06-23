@@ -40,7 +40,7 @@ enum Commands {
         input: String,
         #[arg(short, long, default_value_t = false)]
         in_place: bool,
-    }
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -76,10 +76,7 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", beancount);
             }
         }
-        Commands::Closing {
-            input,
-            in_place,
-        } => {
+        Commands::Closing { input, in_place } => {
             let content = std::fs::read_to_string(&input)?;
             let mut beancount = bean::parse(&content)?;
             bean::closing(&mut beancount)?;

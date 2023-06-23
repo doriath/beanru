@@ -40,7 +40,7 @@ where
 impl<D> From<parser::metadata::Value<D>> for MetadataValue<D> {
     fn from(v: parser::metadata::Value<D>) -> Self {
         match v {
-            parser::metadata::Value::String(x) => MetadataValue::String(x.to_owned()),
+            parser::metadata::Value::String(x) => MetadataValue::String(x),
             parser::metadata::Value::Number(x) => MetadataValue::Number(x),
             parser::metadata::Value::Currency(x) => MetadataValue::Currency(x.into()),
             _ => unimplemented!("given metadata value type is not supported yet"),
@@ -53,7 +53,6 @@ where
     D: Decimal,
 {
     fn from(v: parser::DirectiveContent<D>) -> Self {
-
         match v {
             parser::DirectiveContent::Balance(x) => DirectiveContent::Balance(x.into()),
             parser::DirectiveContent::Close(x) => DirectiveContent::Close(x.into()),
@@ -89,7 +88,7 @@ impl From<parser::Event> for Event {
     fn from(v: parser::Event) -> Self {
         Self {
             name: v.name.to_owned(),
-            value: v.value.to_owned(),
+            value: v.value,
         }
     }
 }
@@ -140,7 +139,7 @@ where
             postings: v.postings.into_iter().map(|x| x.into()).collect(),
             balanced: true,
         };
-        if let Err(_) = t.book() {
+        if t.book().is_err() {
             t.balanced = false
         }
         t
