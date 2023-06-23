@@ -26,7 +26,7 @@ where
 {
     fn from(d: parser::Directive<D>) -> Self {
         Directive {
-            date: d.date,
+            date: from_parser_date_to_chrono_date(&d.date),
             content: d.content.into(),
             metadata: d
                 .metadata
@@ -168,9 +168,13 @@ impl<D> From<parser::Cost<D>> for Cost<D> {
     fn from(v: parser::Cost<D>) -> Self {
         Self {
             amount: v.amount.map(|x| x.into()),
-            date: v.date,
+            date: v.date.map(|d| from_parser_date_to_chrono_date(&d)),
         }
     }
+}
+
+fn from_parser_date_to_chrono_date(d: &parser::Date) -> chrono::NaiveDate {
+    chrono::NaiveDate::from_ymd_opt(d.year.into(), d.month.into(), d.day.into()).unwrap()
 }
 
 impl<D> From<parser::Amount<D>> for Amount<D> {

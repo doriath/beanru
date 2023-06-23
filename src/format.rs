@@ -30,11 +30,7 @@ where
     D: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{:02}-{:02} ",
-            self.date.year, self.date.month, self.date.day
-        )?;
+        write!(f, "{} ", self.date.format("%Y-%m-%d"))?;
         match &self.content {
             DirectiveContent::Balance(x) => {
                 writeln!(f, "balance {} {}", x.account, x.amount)?;

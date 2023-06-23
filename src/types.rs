@@ -1,4 +1,3 @@
-use beancount_parser_2 as parser;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Debug,
@@ -12,7 +11,7 @@ pub struct BeancountFile<D> {
 
 #[derive(Debug)]
 pub struct Directive<D> {
-    pub date: parser::Date,
+    pub date: chrono::NaiveDate,
     pub content: DirectiveContent<D>,
     pub metadata: HashMap<String, MetadataValue<D>>,
 }
@@ -72,7 +71,7 @@ pub struct Posting<D> {
 #[derive(Debug)]
 pub struct Cost<D> {
     pub amount: Option<Amount<D>>,
-    pub date: Option<parser::Date>,
+    pub date: Option<chrono::NaiveDate>,
 }
 
 #[derive(Debug)]
@@ -116,7 +115,7 @@ pub struct Close {
     pub account: Account,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Account(pub String);
 
 pub trait Decimal:
