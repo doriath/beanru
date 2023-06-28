@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
+    hash::Hash,
     ops::{Add, AddAssign, Div, Mul, Neg, Sub},
 };
 
@@ -98,10 +99,38 @@ pub struct Price<D> {
     pub amount: Amount<D>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Amount<D> {
     pub value: D,
     pub currency: Currency,
+}
+
+impl<D> Neg for Amount<D>
+where
+    D: Decimal,
+{
+    type Output = Amount<D>;
+
+    fn neg(self) -> Self::Output {
+        Amount {
+            value: -self.value,
+            currency: self.currency,
+        }
+    }
+}
+
+impl<'a, D> Neg for &'a Amount<D>
+where
+    D: Decimal,
+{
+    type Output = Amount<D>;
+
+    fn neg(self) -> Self::Output {
+        Amount {
+            value: -self.value.clone(),
+            currency: self.currency.clone(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -122,6 +151,7 @@ pub trait Decimal:
     Clone
     + Debug
     + Display
+    + Hash
     + From<i32>
     + Add<Output = Self>
     + AddAssign
@@ -130,6 +160,7 @@ pub trait Decimal:
     + Div<Output = Self>
     + Neg<Output = Self>
     + PartialEq
+    + Eq
     + PartialOrd
 {
 }
@@ -138,6 +169,7 @@ impl<D> Decimal for D where
     D: Clone
         + Debug
         + Display
+        + Hash
         + From<i32>
         + Add<Output = Self>
         + AddAssign
@@ -146,6 +178,7 @@ impl<D> Decimal for D where
         + Div<Output = Self>
         + Neg<Output = Self>
         + PartialEq
+        + Eq
         + PartialOrd
 {
 }

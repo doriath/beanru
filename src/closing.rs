@@ -1,4 +1,6 @@
 use crate::types::*;
+use chrono::{Duration, NaiveDate};
+use std::collections::HashMap;
 
 pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
     // TODO: figure out which closing accounts are already taken
@@ -6,44 +8,61 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
     let mut closing_id = 0;
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
-    let mut closing: Vec<&mut Directive<D>> = file
+    let mut directives: Vec<&mut Directive<D>> = file
         .directives
         .iter_mut()
         .filter(|d| contains_closing_posting(d))
         .collect();
-    closing.sort_by_key(|d| d.date);
+    directives.sort_by_key(|d| d.date);
 
-    for i in 0..closing.len() {
-        for j in (i + 1)..closing.len() {
-            if closing[i].date != closing[j].date {
-                continue;
-            }
-            let p1 = match closing_posting(closing[i]) {
-                Some(p) => (*p).clone(),
-                None => continue,
-            };
-            let p2: &Posting<D> = match closing_posting(closing[j]) {
-                Some(p) => p,
-                None => continue,
-            };
-            let a1 = match &p1.amount {
-                Some(a) => a,
-                None => continue,
-            };
-            let a2 = match &p2.amount {
-                Some(a) => a,
-                None => continue,
-            };
-            if a1.currency == a2.currency && a1.value == -a2.value.clone() {
-                let account = Account(format!("Assets:Closing:{:06}", closing_id));
-                closing_id += 1;
+    let mut amount_to_idx: HashMap<Amount<D>, Vec<usize>> = HashMap::new();
 
-                closing_posting(closing[i]).unwrap().account = account.clone();
-                closing_posting(closing[j]).unwrap().account = account.clone();
-                closing_accounts.push((account.clone(), a1.currency.clone()));
-                println!("{}\n{}", closing[i], closing[j]);
-            }
+    for i in 0..directives.len() {
+        let a = match closing_posting(directives[i]).and_then(|p| p.amount.clone()) {
+            Some(a) => a,
+            None => continue,
+        };
+        amount_to_idx.entry(a).or_default().push(i);
+    }
+
+    for i in 0..directives.len() {
+        let a = match closing_posting(directives[i]).and_then(|p| p.amount.clone()) {
+            Some(a) => a,
+            None => continue,
+        };
+        let currency = a.currency.clone();
+        let matching = match amount_to_idx.get(&-a) {
+            Some(m) => m,
+            None => continue,
+        };
+        let m: Vec<usize> = matching
+            .iter()
+            .filter(|j| date_within(&directives[i].date, &directives[**j].date, 15))
+            .cloned()
+            .collect();
+        if m.len() != 1 {
+            continue;
         }
+        let j = m[0];
+
+        let mj: Vec<usize> = matching
+            .iter()
+            .filter(|k| date_within(&directives[j].date, &directives[**k].date, 15))
+            .cloned()
+            .collect();
+        if mj.len() != 1 {
+            continue;
+        }
+        if closing_posting(directives[i]).is_none() || closing_posting(directives[j]).is_none() {
+            continue;
+        }
+
+        let account = Account(format!("Assets:Closing:{:06}", closing_id));
+        closing_id += 1;
+        closing_posting(directives[i]).unwrap().account = account.clone();
+        closing_posting(directives[j]).unwrap().account = account.clone();
+        closing_accounts.push((account.clone(), currency));
+        println!("{}\n{}", directives[i], directives[j]);
     }
 
     for (account, currency) in closing_accounts {
@@ -69,6 +88,14 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn date_within(d1: &NaiveDate, d2: &NaiveDate, days: i64) -> bool {
+    let mut dur = *d1 - *d2;
+    if dur < Duration::zero() {
+        dur = -dur;
+    }
+    dur <= Duration::days(days)
 }
 
 fn closing_posting<D: Decimal>(d: &mut Directive<D>) -> Option<&mut Posting<D>> {
