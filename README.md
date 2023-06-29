@@ -41,9 +41,10 @@ APIs:
 
 * Figure out if we should make all fields in types public, or if instead we
   should provide getters and setters for all.
-* Unify some type names (like currency and commodity)
+* Unify some type names (like currency and commodity).
 
 Features:
 
 * Provide examples of using `rust-script` to make it very simple to write small
   scripts that perform some modification on a beancount file.
+* Wasm support and examples.

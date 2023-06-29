@@ -93,6 +93,15 @@ pub enum DirectiveContent<D> {
     Transaction(Transaction<D>),
 }
 
+impl<D> DirectiveContent<D> {
+    pub fn transaction_opt(&self) -> Option<&Transaction<D>> {
+        match self {
+            DirectiveContent::Transaction(t) => Some(t),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Price<D> {
     pub currency: Currency,

@@ -1,11 +1,13 @@
 use crate::types::*;
 use chrono::{Duration, NaiveDate};
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashMap;
 
 pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
     // TODO: figure out which closing accounts are already taken
 
-    let mut closing_id = 0;
+    let mut closing_id = last_closing_id(&file.directives);
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
     let mut directives: Vec<&mut Directive<D>> = file
@@ -90,6 +92,27 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn last_closing_id<D>(directives: &[Directive<D>]) -> i32 {
+    directives
+        .iter()
+        .filter_map(|d| d.content.transaction_opt())
+        .flat_map(|t| &t.postings)
+        .filter_map(|p| parse_closing_id(&p.account))
+        .max()
+        .unwrap_or(0)
+}
+
+fn parse_closing_id(account: &Account) -> Option<i32> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^Assets:Closing:(\d{6})$").unwrap();
+    }
+    RE.captures(&account.0)?
+        .get(1)?
+        .as_str()
+        .parse::<i32>()
+        .ok()
+}
+
 fn date_within(d1: &NaiveDate, d2: &NaiveDate, days: i64) -> bool {
     let mut dur = *d1 - *d2;
     if dur < Duration::zero() {
@@ -149,5 +172,14 @@ mod tests {
         let mut got = parse(input).unwrap();
         closing(&mut got).unwrap();
         assert_eq!(parse(expected).unwrap(), got);
+    }
+
+    #[test]
+    fn test_parse_closing_id() {
+        let cases = &[("Assets:Closing:000000", Some(0))];
+
+        for (a, id) in cases {
+            assert_eq!(parse_closing_id(&Account(a.to_string())), *id);
+        }
     }
 }
