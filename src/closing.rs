@@ -4,10 +4,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
 
-pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
+pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Result<()> {
     // TODO: figure out which closing accounts are already taken
 
-    let mut closing_id = last_closing_id(&file.directives);
+    let mut closing_id = last_closing_id(&file.directives) + 1;
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
     let mut directives: Vec<&mut Directive<D>> = file
@@ -39,7 +39,7 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
         };
         let m: Vec<usize> = matching
             .iter()
-            .filter(|j| date_within(&directives[i].date, &directives[**j].date, 15))
+            .filter(|j| date_within(&directives[i].date, &directives[**j].date, days))
             .cloned()
             .collect();
         if m.len() != 1 {
@@ -49,7 +49,7 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
 
         let mj: Vec<usize> = matching
             .iter()
-            .filter(|k| date_within(&directives[j].date, &directives[**k].date, 15))
+            .filter(|k| date_within(&directives[j].date, &directives[**k].date, days))
             .cloned()
             .collect();
         if mj.len() != 1 {
@@ -95,8 +95,7 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>) -> anyhow::Result<()> {
 fn last_closing_id<D>(directives: &[Directive<D>]) -> i32 {
     directives
         .iter()
-        .filter_map(|d| d.content.transaction_opt())
-        .flat_map(|t| &t.postings)
+        .filter_map(|d| d.content.open_opt())
         .filter_map(|p| parse_closing_id(&p.account))
         .max()
         .unwrap_or(0)
@@ -170,7 +169,7 @@ mod tests {
 2099-01-01 balance Assets:Closing:000000 0 CHF
 "#;
         let mut got = parse(input).unwrap();
-        closing(&mut got).unwrap();
+        closing(&mut got, 15).unwrap();
         assert_eq!(parse(expected).unwrap(), got);
     }
 

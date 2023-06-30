@@ -100,6 +100,13 @@ impl<D> DirectiveContent<D> {
             _ => None,
         }
     }
+
+    pub fn open_opt(&self) -> Option<&Open> {
+        match self {
+            DirectiveContent::Open(o) => Some(o),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
