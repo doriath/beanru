@@ -1,5 +1,5 @@
 use crate::types::*;
-use beancount_parser_2 as parser;
+use beancount_parser as parser;
 
 pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decimal>> {
     let beancount = match parser::parse::<rust_decimal::Decimal>(content) {

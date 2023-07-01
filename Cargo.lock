@@ -120,7 +120,7 @@ name = "bean"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "beancount_parser_2",
+ "beancount-parser",
  "chrono",
  "clap",
  "itertools",
@@ -131,10 +131,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "beancount_parser_2"
-version = "1.0.0-beta.3"
+name = "beancount-parser"
+version = "2.0.0-beta.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93ad9423ce1ffc55ccf2f19b2d6242f158c783d356a4fef78cbb6e7bedf79ef7"
+checksum = "7d122349b6b09ba17834f6f46557fa962b7fe216df18c741d9a4683886a37321"
 dependencies = [
  "nom",
  "nom_locate",
