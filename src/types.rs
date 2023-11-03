@@ -17,9 +17,16 @@ pub struct Directive<D> {
     pub metadata: HashMap<String, MetadataValue<D>>,
 }
 
-// TODO: rename to Commodifty
+// TODO: rename to Commodity
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Currency(pub String);
+
+impl From<&str> for Currency {
+    fn from(value: &str) -> Self {
+        Currency(value.to_string())
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetadataValue<D> {
@@ -165,6 +172,7 @@ pub struct Account(pub String);
 
 pub trait Decimal:
     Clone
+    + Default
     + Debug
     + Display
     + Hash
@@ -183,6 +191,7 @@ pub trait Decimal:
 
 impl<D> Decimal for D where
     D: Clone
+        + Default
         + Debug
         + Display
         + Hash
@@ -203,8 +212,6 @@ impl<D> Transaction<D>
 where
     D: Decimal,
 {
-    // TODO: Consider returning error when the postings withing transactions do not balance.
-    // assert!(no_amount_count <= 1, "more than one posting without amount");
     pub fn book(&mut self) -> anyhow::Result<()> {
         let mut amounts: HashMap<Currency, D> = HashMap::new();
         let mut postings_no_amount: Vec<&mut Posting<D>> = Vec::new();

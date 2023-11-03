@@ -1,5 +1,9 @@
 # Beanru - beancount read-modity-write
 
+
+[![Crates.io](https://img.shields.io/crates/v/sycamore)](https://crates.io/crates/sycamore)
+[![docs.rs](https://img.shields.io/docsrs/sycamore?color=blue&label=docs.rs)](https://docs.rs/sycamore)
+
 WARNING: This crate is still in early stages and APIs will change.
 
 The goal of this crate (binary) is to make read-modify-write scripts for
@@ -13,7 +17,7 @@ Limitations:
 ## Install
 
 ```shell
-cargo install --git https://github.com/doriath/beanru
+cargo install beanru
 ```
 
 ## Examples
