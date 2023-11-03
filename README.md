@@ -1,4 +1,4 @@
-# Beancount experiments
+# Beanru - beancount read-modity-write
 
 WARNING: This crate is still in early stages and APIs will change.
 
@@ -13,7 +13,7 @@ Limitations:
 ## Install
 
 ```shell
-cargo install --git https://github.com/doriath/beancount-exp
+cargo install --git https://github.com/doriath/beanru
 ```
 
 ## Examples
@@ -21,7 +21,7 @@ cargo install --git https://github.com/doriath/beancount-exp
 First, normalize your beancount file (reformat and drop comments):
 
 ```shell
-bean normalize -i ledge.beancount
+beanru normalize -i ledge.beancount
 ```
 
 WARNING: I strongly recommend looking at the changes that the script made, to

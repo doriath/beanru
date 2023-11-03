@@ -1,4 +1,4 @@
-use bean::types::Currency;
+use beanru::types::Currency;
 use clap::{Parser, Subcommand};
 
 /// Program for processing beancount files.
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
     match args.command {
         Commands::Normalize { input, in_place } => {
             let content = std::fs::read_to_string(&input)?;
-            let beancount = bean::parse(&content)?;
+            let beancount = beanru::parse(&content)?;
             if in_place {
                 std::fs::write(&input, beancount.to_string())?;
             } else {
@@ -60,8 +60,8 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Check { input } => {
             let content = std::fs::read_to_string(input)?;
-            let beancount = bean::parse(&content)?;
-            bean::check(&beancount)?;
+            let beancount = beanru::parse(&content)?;
+            beanru::check(&beancount)?;
         }
         Commands::StockSplit {
             input,
@@ -70,8 +70,8 @@ fn main() -> anyhow::Result<()> {
             in_place,
         } => {
             let content = std::fs::read_to_string(&input)?;
-            let mut beancount = bean::parse(&content)?;
-            bean::split_stock(&mut beancount, &Currency(commodity), ratio)?;
+            let mut beancount = beanru::parse(&content)?;
+            beanru::split_stock(&mut beancount, &Currency(commodity), ratio)?;
             if in_place {
                 std::fs::write(&input, beancount.to_string())?;
             } else {
@@ -84,8 +84,8 @@ fn main() -> anyhow::Result<()> {
             in_place,
         } => {
             let content = std::fs::read_to_string(&input)?;
-            let mut beancount = bean::parse(&content)?;
-            bean::closing(&mut beancount, days)?;
+            let mut beancount = beanru::parse(&content)?;
+            beanru::closing(&mut beancount, days)?;
             if in_place {
                 std::fs::write(&input, beancount.to_string())?;
             } else {

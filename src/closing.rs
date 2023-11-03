@@ -5,8 +5,6 @@ use regex::Regex;
 use std::collections::HashMap;
 
 pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Result<()> {
-    // TODO: figure out which closing accounts are already taken
-
     let mut closing_id = last_closing_id(&file.directives) + 1;
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
@@ -160,14 +158,14 @@ mod tests {
         let expected = r#"
 2022-01-01 *
     Assets:Bank1 -5 CHF
-    Assets:Closing:000000
+    Assets:Closing:000001
 
 2022-01-01 *
     Assets:Bank1 5 CHF
-    Assets:Closing:000000
+    Assets:Closing:000001
 
-2000-01-01 open Assets:Closing:000000 CHF
-2099-01-01 balance Assets:Closing:000000 0 CHF
+2000-01-01 open Assets:Closing:000001 CHF
+2099-01-01 balance Assets:Closing:000001 0 CHF
 "#;
         let mut got = parse(input).unwrap();
         closing(&mut got, 15).unwrap();
