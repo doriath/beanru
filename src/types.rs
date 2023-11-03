@@ -27,7 +27,6 @@ impl From<&str> for Currency {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MetadataValue<D> {
     String(String),

@@ -17,8 +17,8 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Re
 
     let mut amount_to_idx: HashMap<Amount<D>, Vec<usize>> = HashMap::new();
 
-    for i in 0..directives.len() {
-        let a = match closing_posting(directives[i]).and_then(|p| p.amount.clone()) {
+    for (i, d) in directives.iter_mut().enumerate() {
+        let a = match closing_posting(d).and_then(|p| p.amount.clone()) {
             Some(a) => a,
             None => continue,
         };
