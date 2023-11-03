@@ -43,6 +43,7 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Re
             .cloned()
             .collect();
         if m.len() != 1 {
+            println!("Too many transaction in close range, consider running with --days=N");
             continue;
         }
         let j = m[0];
