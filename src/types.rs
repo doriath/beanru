@@ -1,3 +1,4 @@
+use crate::bag::Bag;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Display},
@@ -212,12 +213,12 @@ where
     D: Decimal,
 {
     pub fn book(&mut self) -> anyhow::Result<()> {
-        let mut amounts: HashMap<Currency, D> = HashMap::new();
+        let mut bag = Bag::new();
         let mut postings_no_amount: Vec<&mut Posting<D>> = Vec::new();
         for posting in &mut self.postings {
             match posting_amount_to_balance(posting) {
                 Some(amount) => {
-                    *amounts.entry(amount.currency.clone()).or_insert(0.into()) += amount.value
+                    bag += amount;
                 }
                 None => postings_no_amount.push(posting),
             };
@@ -226,7 +227,8 @@ where
             postings_no_amount.len() <= 1,
             "more than one posting without amount"
         );
-        let non_zero_amounts = amounts
+        let non_zero_amounts = bag
+            .currencies
             .iter()
             .filter(|x| *x.1 != 0.into())
             .collect::<Vec<_>>();

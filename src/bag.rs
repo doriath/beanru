@@ -15,6 +15,11 @@ impl<D> Bag<D>
 where
     D: Decimal,
 {
+    /// Returns new empty bag of currencies.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Returns true if the Bag is empty (has no currencies or values for all currencies is 0).
     pub fn is_zero(&self) -> bool {
         let zero: D = Default::default();
@@ -34,7 +39,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn bag_is_zero_returns_true_when_empty() {
