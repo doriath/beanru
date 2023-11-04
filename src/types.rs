@@ -6,7 +6,7 @@ use std::{
     ops::{Add, AddAssign, Div, Mul, Neg, Sub},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct BeancountFile<D> {
     pub directives: Vec<Directive<D>>,
 }
