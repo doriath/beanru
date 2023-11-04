@@ -128,6 +128,18 @@ pub struct Amount<D> {
     pub currency: Currency,
 }
 
+impl<D> Amount<D>
+where
+    D: Decimal,
+{
+    pub fn abs(mut self) -> Self {
+        if self.value < 0.into() {
+            self.value = -self.value;
+        }
+        self
+    }
+}
+
 impl<D> Neg for Amount<D>
 where
     D: Decimal,

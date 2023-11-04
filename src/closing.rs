@@ -6,104 +6,105 @@ use regex::Regex;
 use std::io::Write;
 
 pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Result<()> {
-    let mut state = State::new(file, days);
-    state.process()
-}
+    let mut next_closing_id = last_closing_id(&file.directives) + 1;
+    let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
-struct State<'a, D> {
-    file: &'a mut BeancountFile<D>,
-    days: i64,
-    next_closing_id: i32,
-}
+    let mut directives: Vec<&mut Directive<D>> = file
+        .directives
+        .iter_mut()
+        .filter(|d| contains_closing_posting(d))
+        .collect();
+    directives.sort_by_key(|d| d.date);
 
-impl<'a, D> State<'a, D>
-where
-    D: Decimal,
-{
-    fn new(file: &'a mut BeancountFile<D>, days: i64) -> Self {
-        let next_closing_id = last_closing_id(&file.directives) + 1;
+    println!("Found {} unmatched closing directives", directives.len());
 
-        let mut directives: Vec<&mut Directive<D>> = file
-            .directives
-            .iter_mut()
-            .filter(|d| contains_closing_posting(d))
-            .collect();
-        directives.sort_by_key(|d| d.date);
+    for i in 0..directives.len() {
+        println!("============================================================");
+        let best = find_best_matches(&directives, i, days);
+        if best.is_empty() {
+            println!("{}", directives[i]);
+            println!("Could not find a matching directive");
+        } else {
+            println!("{}", directives[i]);
+            println!("--------------------------");
+            println!("Found {} matching directives, showing top 3", best.len());
+            for j in 0..(std::cmp::min(3, best.len())) {
+                println!("{}", directives[best[j]]);
+            }
 
-        Self {
-            file,
-            days,
-            next_closing_id,
+            if let Some(chosen) = ask_user(&best) {
+                match_directives(
+                    &mut directives,
+                    &mut next_closing_id,
+                    &mut closing_accounts,
+                    i,
+                    chosen,
+                );
+            }
         }
     }
 
-    fn process(&mut self) -> anyhow::Result<()> {
-        let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
+    balance_new_closing_accounts(file, &closing_accounts);
 
-        let mut directives: Vec<&mut Directive<D>> = self
-            .file
-            .directives
-            .iter_mut()
-            .filter(|d| contains_closing_posting(d))
-            .collect();
-        directives.sort_by_key(|d| d.date);
+    Ok(())
+}
 
-        println!("Found {} unmatched closing directives", directives.len());
+fn match_directives<D: Decimal>(
+    directives: &mut [&mut Directive<D>],
+    next_closing_id: &mut i32,
+    closing_accounts: &mut Vec<(Account, Currency)>,
+    a: usize,
+    b: usize,
+) {
+    let account = Account(format!("Assets:Closing:{:06}", next_closing_id));
+    *next_closing_id += 1;
 
-        for i in 0..directives.len() {
-            println!("============================================================");
-            let best = find_best_matches(&directives, i, self.days);
-            if best.is_empty() {
-                println!("{}", directives[i]);
-                println!("Could not find a matching directive");
-            } else {
-                println!("{}", directives[i]);
-                println!("--------------------------");
-                println!("Found {} matching directives, showing top 3", best.len());
-                for j in 0..(std::cmp::min(3, best.len())) {
-                    println!("{}", directives[best[j]]);
-                }
+    let amount_a = closing_posting(directives[a])
+        .and_then(|p| p.amount.clone())
+        .unwrap();
+    let amount_b = closing_posting(directives[b])
+        .and_then(|p| p.amount.clone())
+        .unwrap();
 
-                if let Some(chosen) = ask_user(&best) {
-                    let account = Account(format!("Assets:Closing:{:06}", self.next_closing_id));
-                    let currency = closing_posting(directives[i])
-                        .map(|p| p.amount.as_ref().unwrap().currency.clone())
-                        .unwrap();
-                    self.next_closing_id += 1;
-                    let p = closing_posting_mut(directives[i]).unwrap();
-                    p.account = account.clone();
-                    p.flag = None;
-                    let p = closing_posting_mut(directives[chosen]).unwrap();
-                    p.account = account.clone();
-                    p.flag = None;
-                    closing_accounts.push((account.clone(), currency));
-                }
-            }
-        }
+    let p = closing_posting_mut(directives[a]).unwrap();
+    p.account = account.clone();
+    p.flag = None;
+    if amount_a.currency != amount_b.currency {
+        p.amount = Some(-amount_b.clone());
+        p.price = Some(PostingPrice::Total(amount_a.abs()));
+        p.autocomputed = false
+    }
 
-        for (account, currency) in closing_accounts {
-            self.file.directives.push(Directive {
-                date: chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
-                content: DirectiveContent::Open(Open {
-                    account: account.clone(),
-                    currencies: [currency.clone()].into_iter().collect(),
-                }),
-                metadata: Default::default(),
-            });
-            self.file.directives.push(Directive {
-                date: chrono::NaiveDate::from_ymd_opt(2099, 1, 1).unwrap(),
-                content: DirectiveContent::Balance(Balance {
-                    account: account.clone(),
-                    amount: Amount {
-                        value: 0.into(),
-                        currency: currency.clone(),
-                    },
-                }),
-                metadata: Default::default(),
-            });
-        }
+    let p = closing_posting_mut(directives[b]).unwrap();
+    p.account = account.clone();
+    p.flag = None;
+    closing_accounts.push((account, amount_b.currency));
+}
 
-        Ok(())
+fn balance_new_closing_accounts<D: Decimal>(
+    file: &mut BeancountFile<D>,
+    closing_accounts: &[(Account, Currency)],
+) {
+    for (account, currency) in closing_accounts {
+        file.directives.push(Directive {
+            date: chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap(),
+            content: DirectiveContent::Open(Open {
+                account: account.clone(),
+                currencies: [currency.clone()].into_iter().collect(),
+            }),
+            metadata: Default::default(),
+        });
+        file.directives.push(Directive {
+            date: chrono::NaiveDate::from_ymd_opt(2099, 1, 1).unwrap(),
+            content: DirectiveContent::Balance(Balance {
+                account: account.clone(),
+                amount: Amount {
+                    value: 0.into(),
+                    currency: currency.clone(),
+                },
+            }),
+            metadata: Default::default(),
+        });
     }
 }
 
@@ -113,14 +114,20 @@ fn find_best_matches<D: Decimal>(
     max_days: i64,
 ) -> Vec<usize> {
     let start_d: &Directive<D> = directives[start];
-    if start_d.metadata.contains_key("closing_currency_hint") {
-        println!("closing_currency_hint not supported yet")
-    }
     let start_date = start_d.date;
     let start_a = match closing_posting(start_d).and_then(|p| p.amount.clone()) {
         Some(a) => -a,
         None => return Vec::new(),
     };
+    let expected_currency = start_d
+        .metadata
+        .get("closing_currency_hint")
+        .and_then(|h| match h {
+            MetadataValue::String(x) => Some(Currency(x.clone())),
+            _ => None,
+        })
+        .unwrap_or_else(|| start_a.currency.clone());
+    println!("Expected currency: {}", expected_currency);
 
     let mut res = Vec::new();
     for (i, d) in directives.iter().enumerate() {
@@ -128,11 +135,14 @@ fn find_best_matches<D: Decimal>(
             Some(a) => a,
             None => continue,
         };
-        if start_a != a {
-            continue;
-        }
         let diff = (start_date - d.date).abs();
         if diff > Duration::days(max_days) {
+            continue;
+        }
+        if a.currency != expected_currency {
+            continue;
+        }
+        if start_a != a && start_a.currency == expected_currency {
             continue;
         }
         res.push((i, diff));
