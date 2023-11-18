@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops::AddAssign};
+use std::{
+    collections::HashMap,
+    ops::{Add, AddAssign},
+};
 
 use crate::types::{Amount, Currency, Decimal};
 
@@ -25,6 +28,17 @@ where
         let zero: D = Default::default();
         !self.currencies.values().any(|a| *a != zero)
     }
+
+    /// Removes entries with value 0 from the bag.
+    pub fn trim(&mut self) {
+        let zero: D = Default::default();
+        self.currencies.retain(|_, v| *v != zero)
+    }
+
+    /// Returns the list of commodities and amounts currently stored in the bag.
+    pub fn commodities(&self) -> &HashMap<Currency, D> {
+        &self.currencies
+    }
 }
 
 impl<D> AddAssign<Amount<D>> for Bag<D>
@@ -33,6 +47,21 @@ where
 {
     fn add_assign(&mut self, rhs: Amount<D>) {
         *self.currencies.entry(rhs.currency.clone()).or_default() += rhs.value;
+    }
+}
+
+impl<D> Add<Bag<D>> for Bag<D>
+where
+    D: Decimal,
+{
+    type Output = Bag<D>;
+
+    fn add(self, rhs: Bag<D>) -> Bag<D> {
+        let mut res = self;
+        for (commodity, amount) in rhs.currencies {
+            *res.currencies.entry(commodity).or_default() += amount;
+        }
+        res
     }
 }
 
@@ -75,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn bag_supports_add_assign() {
+    fn bag_supports_add_assign_with_amount() {
         let mut bag: Bag<rust_decimal::Decimal> = Default::default();
         bag += Amount {
             value: 1.into(),
@@ -85,5 +114,30 @@ mod tests {
             value: 2.into(),
             currency: "USD".into(),
         };
+        let expected: HashMap<Currency, rust_decimal::Decimal> = HashMap::from([
+            (Currency("CHF".into()), 1.into()),
+            (Currency("USD".into()), 2.into()),
+        ]);
+        assert_eq!(bag.currencies, expected);
+    }
+
+    #[test]
+    fn bag_supports_add_with_bag() {
+        let mut bag1: Bag<rust_decimal::Decimal> = Default::default();
+        let mut bag2: Bag<rust_decimal::Decimal> = Default::default();
+        bag1 += Amount {
+            value: 1.into(),
+            currency: "CHF".into(),
+        };
+        bag2 += Amount {
+            value: 2.into(),
+            currency: "USD".into(),
+        };
+        let bag = bag1 + bag2;
+        let expected: HashMap<Currency, rust_decimal::Decimal> = HashMap::from([
+            (Currency("CHF".into()), 1.into()),
+            (Currency("USD".into()), 2.into()),
+        ]);
+        assert_eq!(bag.currencies, expected);
     }
 }
