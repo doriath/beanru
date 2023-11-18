@@ -50,6 +50,28 @@ where
     }
 }
 
+impl<D> AddAssign<Bag<D>> for Bag<D>
+where
+    D: Decimal,
+{
+    fn add_assign(&mut self, rhs: Bag<D>) {
+        for (commodity, amount) in rhs.currencies {
+            *self.currencies.entry(commodity).or_default() += amount;
+        }
+    }
+}
+
+impl<D> AddAssign<&Bag<D>> for Bag<D>
+where
+    D: Decimal,
+{
+    fn add_assign(&mut self, rhs: &Bag<D>) {
+        for (commodity, amount) in &rhs.currencies {
+            *self.currencies.entry(commodity.clone()).or_default() += amount.clone();
+        }
+    }
+}
+
 impl<D> Add<Bag<D>> for Bag<D>
 where
     D: Decimal,
@@ -139,5 +161,25 @@ mod tests {
             (Currency("USD".into()), 2.into()),
         ]);
         assert_eq!(bag.currencies, expected);
+    }
+
+    #[test]
+    fn bag_supports_add_assign_with_bag() {
+        let mut bag1: Bag<rust_decimal::Decimal> = Default::default();
+        let mut bag2: Bag<rust_decimal::Decimal> = Default::default();
+        bag1 += Amount {
+            value: 1.into(),
+            currency: "CHF".into(),
+        };
+        bag2 += Amount {
+            value: 2.into(),
+            currency: "USD".into(),
+        };
+        bag1 += bag2;
+        let expected: HashMap<Currency, rust_decimal::Decimal> = HashMap::from([
+            (Currency("CHF".into()), 1.into()),
+            (Currency("USD".into()), 2.into()),
+        ]);
+        assert_eq!(bag1.currencies, expected);
     }
 }
