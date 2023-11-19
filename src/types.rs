@@ -4,7 +4,29 @@ use std::{
     fmt::{Debug, Display},
     hash::Hash,
     ops::{Add, AddAssign, Div, Mul, Neg, Sub},
+    path::PathBuf,
+    str::FromStr,
 };
+
+/// A whole Ledger, containing multiple beancount files.
+#[derive(Debug, PartialEq, Eq, Default)]
+pub struct Ledger<D> {
+    files: Vec<(PathBuf, BeancountFile<D>)>,
+}
+
+impl<D> Ledger<D> {
+    pub fn new(files: Vec<(PathBuf, BeancountFile<D>)>) -> Self {
+        Self { files }
+    }
+
+    pub fn files(&self) -> &[(PathBuf, BeancountFile<D>)] {
+        &self.files
+    }
+
+    pub fn files_mut(&mut self) -> &mut Vec<(PathBuf, BeancountFile<D>)> {
+        &mut self.files
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct BeancountFile<D> {
@@ -198,6 +220,7 @@ pub trait Decimal:
     + PartialEq
     + Eq
     + PartialOrd
+    + FromStr
 {
 }
 
@@ -217,6 +240,7 @@ impl<D> Decimal for D where
         + PartialEq
         + Eq
         + PartialOrd
+        + FromStr
 {
 }
 

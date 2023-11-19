@@ -1,5 +1,6 @@
-use beanru::types::Currency;
+use beanru::types::{Currency, Ledger};
 use clap::{Parser, Subcommand};
+use rust_decimal::Decimal;
 
 /// Program for processing beancount files.
 #[derive(Parser)]
@@ -45,7 +46,8 @@ enum Commands {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
@@ -59,9 +61,9 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Check { input } => {
-            let content = std::fs::read_to_string(input)?;
-            let beancount = beanru::parse(&content)?;
-            beanru::check(&beancount)?;
+            let project: Ledger<Decimal> =
+                beanru::read(input, tokio::fs::read_to_string).await?;
+            beanru::check(&project)?;
         }
         Commands::StockSplit {
             input,
