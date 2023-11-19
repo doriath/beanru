@@ -1,32 +1,34 @@
 use crate::types::*;
 
 pub fn split_stock(
-    file: &mut BeancountFile<rust_decimal::Decimal>,
+    ledger: &mut Ledger<rust_decimal::Decimal>,
     commodity: &Currency,
     ratio: rust_decimal::Decimal,
 ) -> anyhow::Result<()> {
-    for directive in &mut file.directives {
-        match &mut directive.content {
-            DirectiveContent::Balance(x) => {
-                if x.amount.currency != *commodity {
-                    continue;
+    for (_, file) in ledger.files_mut() {
+        for directive in &mut file.directives {
+            match &mut directive.content {
+                DirectiveContent::Balance(x) => {
+                    if x.amount.currency != *commodity {
+                        continue;
+                    }
+                    x.amount.value *= ratio;
                 }
-                x.amount.value *= ratio;
-            }
-            DirectiveContent::Close(_) => (),
-            DirectiveContent::Commodity(_) => (),
-            DirectiveContent::Event(_) => (),
-            DirectiveContent::Open(_) => (),
-            DirectiveContent::Pad(_) => (),
-            DirectiveContent::Price(price) => {
-                if price.currency != *commodity {
-                    continue;
+                DirectiveContent::Close(_) => (),
+                DirectiveContent::Commodity(_) => (),
+                DirectiveContent::Event(_) => (),
+                DirectiveContent::Open(_) => (),
+                DirectiveContent::Pad(_) => (),
+                DirectiveContent::Price(price) => {
+                    if price.currency != *commodity {
+                        continue;
+                    }
+                    price.amount.value /= ratio;
                 }
-                price.amount.value /= ratio;
-            }
-            DirectiveContent::Transaction(t) => {
-                for posting in &mut t.postings {
-                    split_stock_posting(posting, commodity, ratio)?;
+                DirectiveContent::Transaction(t) => {
+                    for posting in &mut t.postings {
+                        split_stock_posting(posting, commodity, ratio)?;
+                    }
                 }
             }
         }

@@ -1,9 +1,7 @@
-use std::{error::Error, future::Future, path::{PathBuf, Path}};
-
 use crate::types::*;
 use beancount_parser as parser;
 
-/// Deprecated
+#[deprecated]
 pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decimal>> {
     let beancount = match parser::parse::<rust_decimal::Decimal>(content) {
         Ok(b) => b,
@@ -12,44 +10,15 @@ pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decima
     Ok(beancount.into())
 }
 
-/// Reads the beancount ledger, starting at given path and following all includes.
-/// 
-/// It uses given read_to_string function to read the content at given path. To read from standard
-/// file system, tokio::fs::read_to_string can be used.
-pub async fn read<D, F, R, E>(
-    start_path: impl AsRef<Path>,
-    read_to_string: F,
-) -> anyhow::Result<Ledger<D>>
-where
-    D: Decimal,
-    F: Fn(PathBuf) -> R,
-    R: Future<Output = Result<String, E>>,
-    E: Error + Sync + Send + 'static,
-{
-    let mut queue: Vec<PathBuf> = vec![start_path.as_ref().into()];
-    let mut files: Vec<(PathBuf, BeancountFile<D>)> = Vec::new();
-    while !queue.is_empty() {
-        let p = queue.pop().unwrap();
-        let b = parser::parse::<D>(&read_to_string(p.clone()).await?)?;
-        for incl in &b.includes {
-            let mut x = p.clone();
-            x.pop();
-            x.push(incl);
-            queue.push(x);
-        }
-        files.push((p, b.into()));
-    }
-    Ok(Ledger::new(files))
-}
-
 impl<D> From<parser::BeancountFile<D>> for BeancountFile<D>
 where
     D: Decimal,
 {
     fn from(f: parser::BeancountFile<D>) -> Self {
-        BeancountFile {
-            directives: f.directives.into_iter().map(|d| d.into()).collect(),
-        }
+        BeancountFile::new(
+            f.includes,
+            f.directives.into_iter().map(|d| d.into()).collect(),
+        )
     }
 }
 

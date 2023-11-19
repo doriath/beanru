@@ -16,12 +16,7 @@ enum Commands {
     ///
     /// It reads the beancount file, and then writes it in a standard format used by other
     /// subcommands.
-    Normalize {
-        input: String,
-
-        #[arg(short, long, default_value_t = false)]
-        in_place: bool,
-    },
+    Normalize { input: String },
     /// Checks if all transactions are properly balanced.
     Check { input: String },
     /// Performs stock split.
@@ -33,16 +28,12 @@ enum Commands {
         /// The ratio of the split. For example, if set to 2, it means that every 1 share of the
         /// stock now becomes 2.
         ratio: rust_decimal::Decimal,
-        #[arg(short, long, default_value_t = false)]
-        in_place: bool,
     },
     Closing {
         /// The path to beancount file.
         input: String,
         #[arg(short, long, default_value_t = 15)]
         days: i64,
-        #[arg(short, long, default_value_t = false)]
-        in_place: bool,
     },
 }
 
@@ -51,48 +42,29 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Normalize { input, in_place } => {
-            let content = std::fs::read_to_string(&input)?;
-            let beancount = beanru::parse(&content)?;
-            if in_place {
-                std::fs::write(&input, beancount.to_string())?;
-            } else {
-                println!("{}", beancount);
-            }
+        Commands::Normalize { input } => {
+            let ledger: Ledger<Decimal> = Ledger::read(input, tokio::fs::read_to_string).await?;
+            ledger.write(tokio::fs::write).await?;
         }
         Commands::Check { input } => {
-            let project: Ledger<Decimal> =
-                beanru::read(input, tokio::fs::read_to_string).await?;
-            beanru::check(&project)?;
+            let ledger: Ledger<Decimal> = Ledger::read(input, tokio::fs::read_to_string).await?;
+            beanru::check(&ledger)?;
         }
         Commands::StockSplit {
             input,
             commodity,
             ratio,
-            in_place,
         } => {
-            let content = std::fs::read_to_string(&input)?;
-            let mut beancount = beanru::parse(&content)?;
-            beanru::split_stock(&mut beancount, &Currency(commodity), ratio)?;
-            if in_place {
-                std::fs::write(&input, beancount.to_string())?;
-            } else {
-                println!("{}", beancount);
-            }
+            let mut ledger: Ledger<Decimal> =
+                Ledger::read(input, tokio::fs::read_to_string).await?;
+            beanru::split_stock(&mut ledger, &Currency(commodity), ratio)?;
+            ledger.write(tokio::fs::write).await?;
         }
-        Commands::Closing {
-            input,
-            days,
-            in_place,
-        } => {
-            let content = std::fs::read_to_string(&input)?;
-            let mut beancount = beanru::parse(&content)?;
-            beanru::closing(&mut beancount, days)?;
-            if in_place {
-                std::fs::write(&input, beancount.to_string())?;
-            } else {
-                println!("{}", beancount);
-            }
+        Commands::Closing { input, days } => {
+            let mut ledger: Ledger<Decimal> =
+                Ledger::read(input, tokio::fs::read_to_string).await?;
+            beanru::closing(&mut ledger, days)?;
+            ledger.write(tokio::fs::write).await?;
         }
     }
     Ok(())

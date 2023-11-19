@@ -1,10 +1,13 @@
 use crate::bag::Bag;
+use beancount_parser as parser;
 use std::{
     collections::{HashMap, HashSet},
+    error::Error,
     fmt::{Debug, Display},
+    future::Future,
     hash::Hash,
     ops::{Add, AddAssign, Div, Mul, Neg, Sub},
-    path::PathBuf,
+    path::{Path, PathBuf},
     str::FromStr,
 };
 
@@ -26,11 +29,77 @@ impl<D> Ledger<D> {
     pub fn files_mut(&mut self) -> &mut Vec<(PathBuf, BeancountFile<D>)> {
         &mut self.files
     }
+
+    /// Reads the beancount ledger, starting at given path and following all includes.
+    ///
+    /// It uses given read_to_string function to read the content at given path. To read from standard
+    /// file system, tokio::fs::read_to_string can be used.
+    pub async fn read<F, R, E>(
+        start_path: impl AsRef<Path>,
+        read_to_string: F,
+    ) -> anyhow::Result<Ledger<D>>
+    where
+        D: Decimal,
+        F: Fn(PathBuf) -> R,
+        R: Future<Output = Result<String, E>>,
+        E: Error + Sync + Send + 'static,
+    {
+        let mut queue: Vec<PathBuf> = vec![start_path.as_ref().into()];
+        let mut files: Vec<(PathBuf, BeancountFile<D>)> = Vec::new();
+        // TODO: parallelize it (as we could be reading all files at once).
+        while !queue.is_empty() {
+            let p = queue.pop().unwrap();
+            let b = parser::parse::<D>(&read_to_string(p.clone()).await?)?;
+            for incl in &b.includes {
+                let mut x = p.clone();
+                x.pop();
+                x.push(incl);
+                queue.push(x);
+            }
+            files.push((p, b.into()));
+        }
+        Ok(Ledger::new(files))
+    }
+
+    /// Writes the beancount ledger, starting at given path and following all includes.
+    ///
+    /// It uses given read_to_string function to read the content at given path. To read from standard
+    /// file system, tokio::fs::read_to_string can be used.
+    pub async fn write<F, R>(&self, write: F) -> anyhow::Result<()>
+    where
+        D: Decimal,
+        F: Fn(PathBuf, Vec<u8>) -> R,
+        R: Future<Output = std::io::Result<()>>,
+    {
+        // TODO: parallelize it
+        for (path, file) in self.files() {
+            write(path.clone(), file.to_string().into_bytes()).await?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct BeancountFile<D> {
+    includes: Vec<PathBuf>,
     pub directives: Vec<Directive<D>>,
+}
+
+impl<D> BeancountFile<D> {
+    pub fn new(includes: Vec<PathBuf>, directives: Vec<Directive<D>>) -> Self {
+        Self {
+            includes,
+            directives,
+        }
+    }
+
+    pub fn includes(&self) -> &[PathBuf] {
+        &self.includes
+    }
+
+    pub fn includes_mut(&mut self) -> &mut Vec<PathBuf> {
+        &mut self.includes
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

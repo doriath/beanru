@@ -18,6 +18,9 @@ where
     D: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for path in self.includes() {
+            writeln!(f, "include {:?}", path)?;
+        }
         for directive in &self.directives {
             write!(f, "{}", directive)?;
         }

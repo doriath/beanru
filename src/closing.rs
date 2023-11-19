@@ -5,13 +5,14 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::io::Write;
 
-pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Result<()> {
-    let mut next_closing_id = last_closing_id(&file.directives) + 1;
+pub fn closing<D: Decimal>(ledger: &mut Ledger<D>, days: i64) -> anyhow::Result<()> {
+    let mut next_closing_id = last_closing_id(ledger) + 1;
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
-    let mut directives: Vec<&mut Directive<D>> = file
-        .directives
+    let mut directives: Vec<&mut Directive<D>> = ledger
+        .files_mut()
         .iter_mut()
+        .flat_map(|x| &mut x.1.directives)
         .filter(|d| contains_closing_posting(d))
         .collect();
     directives.sort_by_key(|d| d.date);
@@ -44,7 +45,7 @@ pub fn closing<D: Decimal>(file: &mut BeancountFile<D>, days: i64) -> anyhow::Re
         }
     }
 
-    balance_new_closing_accounts(file, &closing_accounts);
+    balance_new_closing_accounts(&mut ledger.files_mut()[0].1, &closing_accounts);
 
     Ok(())
 }
@@ -175,9 +176,11 @@ fn ask_user(best: &[usize]) -> Option<usize> {
     }
 }
 
-fn last_closing_id<D>(directives: &[Directive<D>]) -> i32 {
-    directives
+fn last_closing_id<D>(ledger: &Ledger<D>) -> i32 {
+    ledger
+        .files()
         .iter()
+        .flat_map(|x| &x.1.directives)
         .filter_map(|d| d.content.open_opt())
         .filter_map(|p| parse_closing_id(&p.account))
         .max()
