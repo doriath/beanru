@@ -65,11 +65,12 @@ impl<D> Ledger<D> {
     ///
     /// It uses given read_to_string function to read the content at given path. To read from standard
     /// file system, tokio::fs::read_to_string can be used.
-    pub async fn write<F, R>(&self, write: F) -> anyhow::Result<()>
+    pub async fn write<F, R, E>(&self, write: F) -> anyhow::Result<()>
     where
         D: Decimal,
         F: Fn(PathBuf, Vec<u8>) -> R,
-        R: Future<Output = std::io::Result<()>>,
+        R: Future<Output = Result<(), E>>,
+        E: Error + Sync + Send + 'static,
     {
         // TODO: parallelize it
         for (path, file) in self.files() {
