@@ -2,7 +2,6 @@ use crate::bag::Bag;
 use beancount_parser as parser;
 use std::{
     collections::{HashMap, HashSet},
-    error::Error,
     fmt::{Debug, Display},
     future::Future,
     hash::Hash,
@@ -34,15 +33,14 @@ impl<D> Ledger<D> {
     ///
     /// It uses given read_to_string function to read the content at given path. To read from standard
     /// file system, tokio::fs::read_to_string can be used.
-    pub async fn read<F, R, E>(
+    pub async fn read<F, R>(
         start_path: impl AsRef<Path>,
         read_to_string: F,
     ) -> anyhow::Result<Ledger<D>>
     where
         D: Decimal,
         F: Fn(PathBuf) -> R,
-        R: Future<Output = Result<String, E>>,
-        E: Error + Sync + Send + 'static,
+        R: Future<Output = anyhow::Result<String>>,
     {
         let mut queue: Vec<PathBuf> = vec![start_path.as_ref().into()];
         let mut files: Vec<(PathBuf, BeancountFile<D>)> = Vec::new();
@@ -65,12 +63,11 @@ impl<D> Ledger<D> {
     ///
     /// It uses given read_to_string function to read the content at given path. To read from standard
     /// file system, tokio::fs::read_to_string can be used.
-    pub async fn write<F, R, E>(&self, write: F) -> anyhow::Result<()>
+    pub async fn write<F, R>(&self, write: F) -> anyhow::Result<()>
     where
         D: Decimal,
         F: Fn(PathBuf, Vec<u8>) -> R,
-        R: Future<Output = Result<(), E>>,
-        E: Error + Sync + Send + 'static,
+        R: Future<Output = anyhow::Result<()>>,
     {
         // TODO: parallelize it
         for (path, file) in self.files() {
