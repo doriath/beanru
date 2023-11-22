@@ -37,17 +37,27 @@ enum Commands {
     },
 }
 
+async fn read_ledger(input: &str) -> anyhow::Result<Ledger<Decimal>> {
+    Ledger::read(input, |p| async { Ok(tokio::fs::read_to_string(p).await?) }).await
+}
+
+async fn write_ledger(ledger: Ledger<Decimal>) -> anyhow::Result<()> {
+    ledger
+        .write(|p, c| async { Ok(tokio::fs::write(p, c).await?) })
+        .await
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args.command {
         Commands::Normalize { input } => {
-            let ledger: Ledger<Decimal> = Ledger::read(input, tokio::fs::read_to_string).await?;
-            ledger.write(tokio::fs::write).await?;
+            let ledger = read_ledger(&input).await?;
+            write_ledger(ledger).await?;
         }
         Commands::Check { input } => {
-            let ledger: Ledger<Decimal> = Ledger::read(input, tokio::fs::read_to_string).await?;
+            let ledger = read_ledger(&input).await?;
             beanru::check(&ledger)?;
         }
         Commands::StockSplit {
@@ -55,16 +65,14 @@ async fn main() -> anyhow::Result<()> {
             commodity,
             ratio,
         } => {
-            let mut ledger: Ledger<Decimal> =
-                Ledger::read(input, tokio::fs::read_to_string).await?;
+            let mut ledger = read_ledger(&input).await?;
             beanru::split_stock(&mut ledger, &Currency(commodity), ratio)?;
-            ledger.write(tokio::fs::write).await?;
+            write_ledger(ledger).await?;
         }
         Commands::Closing { input, days } => {
-            let mut ledger: Ledger<Decimal> =
-                Ledger::read(input, tokio::fs::read_to_string).await?;
+            let mut ledger = read_ledger(&input).await?;
             beanru::closing(&mut ledger, days)?;
-            ledger.write(tokio::fs::write).await?;
+            write_ledger(ledger).await?;
         }
     }
     Ok(())
