@@ -5,7 +5,7 @@ pub fn split_stock(
     commodity: &Currency,
     ratio: rust_decimal::Decimal,
 ) -> anyhow::Result<()> {
-    for (_, file) in ledger.files_mut() {
+    for (_, file) in &mut ledger.files {
         for directive in &mut file.directives {
             match &mut directive.content {
                 DirectiveContent::Balance(x) => {

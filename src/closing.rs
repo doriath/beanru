@@ -10,7 +10,7 @@ pub fn closing<D: Decimal>(ledger: &mut Ledger<D>, days: i64) -> anyhow::Result<
     let mut closing_accounts: Vec<(Account, Currency)> = Vec::new();
 
     let mut directives: Vec<&mut Directive<D>> = ledger
-        .files_mut()
+        .files
         .iter_mut()
         .flat_map(|x| &mut x.1.directives)
         .filter(|d| contains_closing_posting(d))
@@ -45,7 +45,7 @@ pub fn closing<D: Decimal>(ledger: &mut Ledger<D>, days: i64) -> anyhow::Result<
         }
     }
 
-    balance_new_closing_accounts(&mut ledger.files_mut()[0].1, &closing_accounts);
+    balance_new_closing_accounts(&mut ledger.files[0].1, &closing_accounts);
 
     Ok(())
 }
@@ -178,7 +178,7 @@ fn ask_user(best: &[usize]) -> Option<usize> {
 
 fn last_closing_id<D>(ledger: &Ledger<D>) -> i32 {
     ledger
-        .files()
+        .files
         .iter()
         .flat_map(|x| &x.1.directives)
         .filter_map(|d| d.content.open_opt())

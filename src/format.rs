@@ -8,18 +8,16 @@ fn sorted_hashset(h: &HashSet<String>) -> Vec<String> {
     v
 }
 
-fn quote(s: &str) -> String {
-    // TODO: do proper escaping
-    format!("\"{}\"", s)
-}
-
 impl<D> std::fmt::Display for BeancountFile<D>
 where
     D: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for path in self.includes() {
+        for path in &self.includes {
             writeln!(f, "include {:?}", path)?;
+        }
+        for option in &self.options {
+            writeln!(f, "option {:?} {:?}", option.0, option.1)?;
         }
         for directive in &self.directives {
             write!(f, "{}", directive)?;
@@ -67,10 +65,10 @@ where
             DirectiveContent::Transaction(t) => {
                 write!(f, "{}", t.flag.unwrap_or('*'))?;
                 if let Some(payee) = &t.payee {
-                    write!(f, " {}", quote(payee))?;
+                    write!(f, " {:?}", payee)?;
                 }
                 if let Some(narration) = &t.narration {
-                    write!(f, " {}", quote(narration))?;
+                    write!(f, " {:?}", narration)?;
                 }
                 for tag in sorted_hashset(&t.tags) {
                     write!(f, " #{}", tag)?;
@@ -135,7 +133,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MetadataValue::String(x) => write!(f, "{}", quote(x)),
+            MetadataValue::String(x) => write!(f, "{:?}", x),
             MetadataValue::Number(x) => write!(f, "{}", x),
             MetadataValue::Currency(x) => write!(f, "{}", x),
         }

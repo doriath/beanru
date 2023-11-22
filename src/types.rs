@@ -13,22 +13,10 @@ use std::{
 /// A whole Ledger, containing multiple beancount files.
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct Ledger<D> {
-    files: Vec<(PathBuf, BeancountFile<D>)>,
+    pub files: Vec<(PathBuf, BeancountFile<D>)>,
 }
 
 impl<D> Ledger<D> {
-    pub fn new(files: Vec<(PathBuf, BeancountFile<D>)>) -> Self {
-        Self { files }
-    }
-
-    pub fn files(&self) -> &[(PathBuf, BeancountFile<D>)] {
-        &self.files
-    }
-
-    pub fn files_mut(&mut self) -> &mut Vec<(PathBuf, BeancountFile<D>)> {
-        &mut self.files
-    }
-
     /// Reads the beancount ledger, starting at given path and following all includes.
     ///
     /// It uses given read_to_string function to read the content at given path. To read from standard
@@ -56,7 +44,7 @@ impl<D> Ledger<D> {
             }
             files.push((p, b.into()));
         }
-        Ok(Ledger::new(files))
+        Ok(Ledger { files })
     }
 
     /// Writes the beancount ledger, starting at given path and following all includes.
@@ -70,7 +58,7 @@ impl<D> Ledger<D> {
         R: Future<Output = anyhow::Result<()>>,
     {
         // TODO: parallelize it
-        for (path, file) in self.files() {
+        for (path, file) in &self.files {
             write(path.clone(), file.to_string().into_bytes()).await?;
         }
         Ok(())
@@ -79,25 +67,9 @@ impl<D> Ledger<D> {
 
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct BeancountFile<D> {
-    includes: Vec<PathBuf>,
+    pub options: Vec<(String, String)>,
+    pub includes: Vec<PathBuf>,
     pub directives: Vec<Directive<D>>,
-}
-
-impl<D> BeancountFile<D> {
-    pub fn new(includes: Vec<PathBuf>, directives: Vec<Directive<D>>) -> Self {
-        Self {
-            includes,
-            directives,
-        }
-    }
-
-    pub fn includes(&self) -> &[PathBuf] {
-        &self.includes
-    }
-
-    pub fn includes_mut(&mut self) -> &mut Vec<PathBuf> {
-        &mut self.includes
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -1,7 +1,6 @@
 use crate::types::*;
 use beancount_parser as parser;
 
-#[deprecated]
 pub fn parse(content: &str) -> anyhow::Result<BeancountFile<rust_decimal::Decimal>> {
     let beancount = match parser::parse::<rust_decimal::Decimal>(content) {
         Ok(b) => b,
@@ -15,10 +14,11 @@ where
     D: Decimal,
 {
     fn from(f: parser::BeancountFile<D>) -> Self {
-        BeancountFile::new(
-            f.includes,
-            f.directives.into_iter().map(|d| d.into()).collect(),
-        )
+        BeancountFile {
+            options: f.options.into_iter().map(|o| (o.name, o.value)).collect(),
+            includes: f.includes,
+            directives: f.directives.into_iter().map(|d| d.into()).collect(),
+        }
     }
 }
 
