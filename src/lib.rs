@@ -5,6 +5,7 @@ pub mod format;
 mod parse;
 mod split_stock;
 pub mod types;
+pub mod importers;
 
 pub use check::check;
 pub use closing::closing;
