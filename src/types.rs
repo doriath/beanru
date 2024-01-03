@@ -240,7 +240,7 @@ pub struct Close {
     pub account: Account,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Account(pub String);
 
 pub trait Decimal:
