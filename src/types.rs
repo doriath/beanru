@@ -33,8 +33,7 @@ impl<D> Ledger<D> {
         let mut queue: Vec<PathBuf> = vec![start_path.as_ref().into()];
         let mut files: Vec<(PathBuf, BeancountFile<D>)> = Vec::new();
         // TODO: parallelize it (as we could be reading all files at once).
-        while !queue.is_empty() {
-            let p = queue.pop().unwrap();
+        while let Some(p) = queue.pop() {
             let b = parser::parse::<D>(&read_to_string(p.clone()).await?)?;
             for incl in &b.includes {
                 let mut x = p.clone();

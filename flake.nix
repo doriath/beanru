@@ -1,5 +1,5 @@
 {
-  description = "Development environment";
+  description = "Flake for beanru";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -14,33 +14,40 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-
-        rust = pkgs.rust-bin.stable.latest.default.override {
-          targets = ["wasm32-wasi" "wasm32-unknown-unknown"];
+        manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
+        rust = pkgs.rust-bin.stable.latest;
+        rustPlatform = pkgs.recurseIntoAttrs (pkgs.makeRustPlatform {
+          rustc = rust.rust;
+          cargo = rust.cargo;
+        });
+        beanru = rustPlatform.buildRustPackage {
+          name = manifest.name;
+          version = manifest.version;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          src = pkgs.lib.cleanSource ./.;
+          nativeBuildInputs = [
+            pkgs.pkg-config
+          ];
         };
-
       in
       rec
       {
         formatter = pkgs.nixpkgs-fmt;
 
         packages = flake-utils.lib.flattenTree {
+          beanru = beanru;
         };
 
+        defaultPackage = packages.beanru;
+
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = [
-            pkgs.pkg-config
-          ];
           buildInputs = [
-            pkgs.autoconf
-            pkgs.automake
             pkgs.bashInteractive
-            pkgs.openssl
             pkgs.rust-analyzer
-            rust
+            rust.default
           ];
-          shellHook = ''
-          '';
         };
       }
     );

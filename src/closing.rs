@@ -229,36 +229,7 @@ fn contains_closing_posting<D: Decimal>(d: &Directive<D>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parse::parse;
     use pretty_assertions::assert_eq;
-
-    // #[test]
-    fn test_closing() {
-        let input = r#"
-2022-01-01 *
-    Assets:Bank1 -5 CHF
-    Assets:Closing
-
-2022-01-01 *
-    Assets:Bank1 5 CHF
-    Assets:Closing
-"#;
-        let expected = r#"
-2022-01-01 *
-    Assets:Bank1 -5 CHF
-    Assets:Closing:000001
-
-2022-01-01 *
-    Assets:Bank1 5 CHF
-    Assets:Closing:000001
-
-2000-01-01 open Assets:Closing:000001 CHF
-2099-01-01 balance Assets:Closing:000001 0 CHF
-"#;
-        let mut got = parse(input).unwrap();
-        closing(&mut got, 15).unwrap();
-        assert_eq!(parse(expected).unwrap(), got);
-    }
 
     #[test]
     fn test_parse_closing_id() {

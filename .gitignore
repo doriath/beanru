@@ -1,2 +1,5 @@
-/target
 .direnv
+# Cargo output
+/target
+# Nix output
+/result
