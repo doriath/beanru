@@ -2,10 +2,10 @@ pub mod bag;
 mod check;
 mod closing;
 pub mod format;
+pub mod importers;
 mod parse;
 mod split_stock;
 pub mod types;
-pub mod importers;
 
 pub use check::check;
 pub use closing::closing;

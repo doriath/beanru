@@ -2,7 +2,7 @@
   description = "Flake for beanru";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
   };
@@ -15,10 +15,10 @@
           inherit system overlays;
         };
         manifest = (pkgs.lib.importTOML ./Cargo.toml).package;
-        rust = pkgs.rust-bin.stable.latest;
+        rust = pkgs.rust-bin.stable.latest.default;
         rustPlatform = pkgs.recurseIntoAttrs (pkgs.makeRustPlatform {
-          rustc = rust.rust;
-          cargo = rust.cargo;
+          rustc = rust;
+          cargo = rust;
         });
         beanru = rustPlatform.buildRustPackage {
           name = manifest.name;
@@ -46,7 +46,7 @@
           buildInputs = [
             pkgs.bashInteractive
             pkgs.rust-analyzer
-            rust.default
+            rust
           ];
         };
       }

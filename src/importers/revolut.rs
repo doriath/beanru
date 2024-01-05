@@ -27,8 +27,8 @@ use crate::types::{
 };
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
-use std::{collections::HashSet, path::Path};
 use serde::Deserialize;
+use std::{collections::HashSet, path::Path};
 
 #[derive(Deserialize)]
 pub struct Record {
@@ -54,13 +54,17 @@ pub struct Record {
     // balance: String,
 }
 
-pub fn import(path: &Path, account_prefix: &str, fee_account: &str) -> anyhow::Result<BeancountFile<Decimal>> {
+pub fn import(
+    path: &Path,
+    account_prefix: &str,
+    fee_account: &str,
+) -> anyhow::Result<BeancountFile<Decimal>> {
     let mut file = BeancountFile::default();
     let mut rdr = csv::Reader::from_path(path)?;
     for record in rdr.deserialize() {
         let record: Record = record?;
         if record.state != "COMPLETED" {
-            continue
+            continue;
         }
         let currency = Currency(record.currency.clone());
         let account = Account(format!("{}:{}", account_prefix, record.currency));
@@ -81,7 +85,8 @@ pub fn import(path: &Path, account_prefix: &str, fee_account: &str) -> anyhow::R
         let mut postings = vec![Posting {
             account,
             amount: Some(Amount {
-                value: Decimal::from_str(&record.amount).unwrap() - Decimal::from_str(&record.fee).unwrap(),
+                value: Decimal::from_str(&record.amount).unwrap()
+                    - Decimal::from_str(&record.fee).unwrap(),
                 currency: currency.clone(),
             }),
             flag: None,

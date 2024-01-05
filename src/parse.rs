@@ -63,6 +63,7 @@ where
             parser::DirectiveContent::Pad(x) => DirectiveContent::Pad(x.into()),
             parser::DirectiveContent::Price(x) => DirectiveContent::Price(x.into()),
             parser::DirectiveContent::Transaction(x) => DirectiveContent::Transaction(x.into()),
+            parser::DirectiveContent::Event(x) => DirectiveContent::Event(x.into()),
             _ => unimplemented!(),
         }
     }

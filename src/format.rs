@@ -36,6 +36,9 @@ where
             DirectiveContent::Balance(x) => {
                 writeln!(f, "balance {} {}", x.account, x.amount)?;
             }
+            DirectiveContent::Event(x) => {
+                writeln!(f, "event {} {}", x.name, x.value)?;
+            }
             DirectiveContent::Close(x) => {
                 writeln!(f, "close {}", x.account)?;
             }
@@ -78,7 +81,6 @@ where
                 }
                 writeln!(f)?;
             }
-            _ => unimplemented!(),
         };
         for (key, value) in self.metadata.iter().sorted_by_key(|x| x.0) {
             writeln!(f, "  {}: {}", key, value)?;
