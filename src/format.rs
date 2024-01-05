@@ -37,7 +37,7 @@ where
                 writeln!(f, "balance {} {}", x.account, x.amount)?;
             }
             DirectiveContent::Event(x) => {
-                writeln!(f, "event {} {}", x.name, x.value)?;
+                writeln!(f, "event {:?} {:?}", x.name, x.value)?;
             }
             DirectiveContent::Close(x) => {
                 writeln!(f, "close {}", x.account)?;
