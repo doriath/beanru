@@ -167,10 +167,10 @@ fn ask_user(best: &[usize]) -> Option<usize> {
         if input.is_empty() || input == "1" {
             return Some(best[0]);
         }
-        if input == "2" && best.len() <= 2 {
+        if input == "2" && best.len() >= 2 {
             return Some(best[1]);
         }
-        if input == "3" && best.len() <= 3 {
+        if input == "3" && best.len() >= 3 {
             return Some(best[2]);
         }
     }
