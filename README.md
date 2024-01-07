@@ -1,8 +1,8 @@
 # Beanru - beancount read-modity-write
 
 
-[![Crates.io](https://img.shields.io/crates/v/sycamore)](https://crates.io/crates/sycamore)
-[![docs.rs](https://img.shields.io/docsrs/sycamore?color=blue&label=docs.rs)](https://docs.rs/sycamore)
+[![Crates.io](https://img.shields.io/crates/v/beanru)](https://crates.io/crates/beanru)
+[![docs.rs](https://img.shields.io/docsrs/beanru?color=blue&label=docs.rs)](https://docs.rs/beanru)
 
 WARNING: This crate is still in early stages and APIs will change.
 
