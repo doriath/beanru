@@ -1,6 +1,7 @@
 pub mod bag;
 mod check;
 mod closing;
+pub mod exp;
 pub mod format;
 pub mod importers;
 mod parse;
