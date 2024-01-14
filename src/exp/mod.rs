@@ -24,8 +24,6 @@ fn parse_root(content: &str) -> Vec<Entry> {
 fn parse_entry(content: &str) -> (Entry, &str) {
     assert!(!content.is_empty());
 
-    // let (ws_pre, rem) = read_ws(content);
-
     // What are the options now:
     // pragma (include / option / plugin / pushtag poptag pushmeta popmeta)
     // empty line
@@ -36,10 +34,8 @@ fn parse_entry(content: &str) -> (Entry, &str) {
     // ; comment
     // unrecognized line
 
-    let ch = content.chars().next();
-
     // We already verified the content is not empty above with an assert
-    match ch.unwrap() {
+    match content.chars().next().unwrap() {
         '\n' => {
             // TODO: figure out if this can be done nicer
             let (line, remaining) = split_at_newline(content);
@@ -49,11 +45,7 @@ fn parse_entry(content: &str) -> (Entry, &str) {
             let (line, remaining) = split_at_newline(content);
             (Entry::IgnoredLine(line.into()), remaining)
         }
-        ';' => {
-            // TODO: comments should be handled differently, to attach it to directives
-            let (line, remaining) = split_at_newline(content);
-            (Entry::IgnoredLine(line.into()), remaining)
-        }
+        ';' => parse_comments(content),
         c if c.is_numeric() => parse_directive(content),
         // TODO: handle pragma entries
         _ => {
@@ -63,8 +55,32 @@ fn parse_entry(content: &str) -> (Entry, &str) {
     }
 }
 
+// We expect that first character is comment here.
+fn parse_comments(content: &str) -> (Entry, &str) {
+    let mut comments = vec![];
+    let mut r = content;
+    loop {
+        match r.chars().next() {
+            Some(c) if c == ';' => {
+                let (line, r1) = split_at_newline(r);
+                r = r1;
+                comments.push(line.into());
+            }
+            Some(c) if c.is_numeric() => {
+                // TODO: optimize this clone
+                match parse_directive_opt(r, comments.clone()) {
+                    Some((d, r1)) => return (Entry::Directive(d), r1),
+                    None => break,
+                }
+            }
+            _ => break,
+        }
+    }
+    (Entry::CommentBlock(comments), r)
+}
+
 fn parse_directive(content: &str) -> (Entry, &str) {
-    match parse_directive_opt(content) {
+    match parse_directive_opt(content, vec![]) {
         None => {
             let (line, remaining) = split_at_newline(content);
             (Entry::InvalidLine(line.to_string()), remaining)
@@ -73,32 +89,101 @@ fn parse_directive(content: &str) -> (Entry, &str) {
     }
 }
 
-fn parse_directive_opt(content: &str) -> Option<(Directive, &str)> {
+fn parse_directive_opt(content: &str, pre_comments: Vec<String>) -> Option<(Directive, &str)> {
     let (date, r) = read_date(content)?;
 
     let (ws1, r) = read_ws1(r)?;
 
     let (dir_type, r) = read_while(r, |c| c.is_alphabetic() || c == '*');
-    if dir_type != "open" {
-        return None;
+
+    match dir_type {
+        "open" => {
+            let (ws2, r) = read_ws1(r)?;
+            let (account, r) = read_account(r)?;
+
+            let (ws3, comment, r) = read_opt_inline_comment(r)?;
+
+            Some((
+                Directive::Open(Open {
+                    pre_comments,
+                    date,
+                    ws1: ws1.into(),
+                    ws2: ws2.into(),
+                    account: account.into(),
+                    ws3: ws3.into(),
+                    inline_comment: comment.into(),
+                }),
+                r,
+            ))
+        }
+        "txn" | "*" => {
+            // let (ws2, r1) = read_ws1(r)?;
+
+            let (ws2, comment, r) = read_opt_inline_comment(r)?;
+
+            Some((
+                Directive::Transaction(Transaction {
+                    pre_comments,
+                    date,
+                    ws1: ws1.into(),
+                    typ: dir_type.into(),
+                    ws2: ws2.into(),
+                    narration: None,
+                    inline_comment: comment.into(),
+                }),
+                r,
+            ))
+        }
+        _ => None,
     }
-    let (ws2, r) = read_ws1(r)?;
-    let (account, r) = read_account(r)?;
+}
 
-    let (ws3, comment, r) = read_opt_inline_comment(r)?;
+#[derive(Debug, PartialEq, Eq)]
+enum Token {
+    /// At least one whitespace followed by character that is not an end of line.
+    Whitespace,
+    /// optional whitespaces followed by end of line or end of file
+    WhitespaceAndEnd,
+    Comment,
+    StringLit,
+    Invalid,
+}
 
-    Some((
-        Directive::Open(Open {
-            pre_comments: vec![],
-            date,
-            ws1: ws1.into(),
-            ws2: ws2.into(),
-            account: account.into(),
-            ws3: ws3.into(),
-            inline_comment: comment.into(),
-        }),
-        r,
-    ))
+fn read_token(content: &str) -> (Token, &str, &str) {
+    let mut chars = content.char_indices();
+    match chars.next() {
+        None => return (Token::WhitespaceAndEnd, "", ""),
+        Some((_, c)) if c == ' ' || c == '\t' => {
+            for (p, c) in chars {
+                if c == ' ' || c == '\t' {
+                    continue;
+                }
+                if c == '\n' {
+                    let (a, b) = content.split_at(p + 1);
+                    return (Token::WhitespaceAndEnd, a, b);
+                }
+                let (a, b) = content.split_at(p);
+                return (Token::Whitespace, a, b);
+            }
+            (Token::WhitespaceAndEnd, content, "")
+        }
+        Some((_, c)) if c == ';' => {
+            let (a, b) = split_at_newline(content);
+            (Token::Comment, a, b)
+        }
+        // TODO: add support for escaping the string
+        Some((_, c)) if c == '"' => {
+            for (p, c) in chars {
+                if c == '"' {
+                    let (a, b) = content.split_at(p + 1);
+                    return (Token::StringLit, a, b);
+                }
+            }
+            let (a, b) = split_at_newline(content);
+            (Token::Invalid, a, b)
+        }
+        _ => todo!(),
+    }
 }
 
 fn read_opt_inline_comment(content: &str) -> Option<(&str, &str, &str)> {
@@ -117,9 +202,7 @@ fn read_account(content: &str) -> Option<(&str, &str)> {
     // Each component:
     // - starts with capital letter or number
     // - contains letters, numbers or dashes
-    let (a, r) = read_while(content, |c| {
-        c.is_alphanumeric() || c == '-' || c == ':'
-    });
+    let (a, r) = read_while(content, |c| c.is_alphanumeric() || c == '-' || c == ':');
     // TODO: verify that this is a proper account
     Some((a, r))
 }
@@ -250,11 +333,15 @@ impl ToString for File {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Entry {
+    /// A directive (that starts with a date).
     Directive(Directive),
+    /// An entry that does not start with a date.
     Pragma(Pragma),
-    /// Comment or line starts with one of the ignored characters. '*', ':', '#', '!', '&', '?',
-    /// '%'
+    /// A comment block not attached to any directive.
+    CommentBlock(Vec<String>),
+    /// A line starts with one of the ignored characters. '*', ':', '#', '!', '&', '?', '%'.
     IgnoredLine(String),
+
     InvalidLine(String),
 }
 
@@ -276,6 +363,10 @@ impl Entry {
     pub fn as_open(&self) -> Option<&Open> {
         self.as_directive().and_then(Directive::as_open)
     }
+
+    pub fn as_transaction(&self) -> Option<&Transaction> {
+        self.as_directive().and_then(Directive::as_transaction)
+    }
 }
 
 impl ToString for Entry {
@@ -283,6 +374,7 @@ impl ToString for Entry {
         match self {
             Entry::Directive(d) => d.to_string(),
             Entry::Pragma(_) => todo!(),
+            Entry::CommentBlock(c) => c.iter().join(""),
             Entry::IgnoredLine(l) => l.into(),
             Entry::InvalidLine(l) => l.into(),
         }
@@ -291,6 +383,7 @@ impl ToString for Entry {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Directive {
+    Transaction(Transaction),
     Open(Open),
     Close(Close),
 }
@@ -302,11 +395,19 @@ impl Directive {
         }
         None
     }
+
+    pub fn as_transaction(&self) -> Option<&Transaction> {
+        if let Directive::Transaction(t) = self {
+            return Some(t);
+        }
+        None
+    }
 }
 
 impl ToString for Directive {
     fn to_string(&self) -> String {
         match self {
+            Directive::Transaction(t) => t.to_string(),
             Directive::Open(d) => d.to_string(),
             Directive::Close(d) => d.to_string(),
         }
@@ -337,6 +438,42 @@ impl std::fmt::Display for Account {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Transaction {
+    pre_comments: Vec<String>,
+    // date ws1 (txn|*) ws2 ?(?(payee ws3) (narration ws4)) (tag|link)* ?inline_comment
+    date: Date,
+    ws1: String,
+    // txn || *
+    typ: String,
+    ws2: String,
+    narration: Option<String>,
+    inline_comment: String,
+}
+
+impl Transaction {
+    pub fn date(&self) -> &Date {
+        &self.date
+    }
+    pub fn narration(&self) -> &Option<String> {
+        &self.narration
+    }
+}
+
+impl ToString for Transaction {
+    fn to_string(&self) -> String {
+        format!(
+            "{}{}{}{}{}{}",
+            self.pre_comments.join(""),
+            self.date.to_string(),
+            self.ws1,
+            self.typ,
+            self.ws2,
+            self.inline_comment
+        )
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct Open {
     pre_comments: Vec<String>,
     // date ws1 open ws2 account ws3
@@ -360,7 +497,8 @@ impl Open {
 impl ToString for Open {
     fn to_string(&self) -> String {
         format!(
-            "{}{}{}{}{}{}{}",
+            "{}{}{}{}{}{}{}{}",
+            self.pre_comments.join(""),
             self.date.to_string(),
             self.ws1,
             "open",
@@ -508,5 +646,32 @@ mod tests {
         expect_that!(read_number("1a"), eq(Some(("1", "a"))));
         expect_that!(read_number("1"), eq(Some(("1", ""))));
         expect_that!(read_number("02-"), eq(Some(("02", "-"))));
+    }
+
+    #[googletest::test]
+    fn test_read_token() {
+        expect_that!(read_token(""), eq((Token::WhitespaceAndEnd, "", "")));
+        expect_that!(read_token(" "), eq((Token::WhitespaceAndEnd, " ", "")));
+        expect_that!(read_token(" \n"), eq((Token::WhitespaceAndEnd, " \n", "")));
+        expect_that!(
+            read_token(" \na"),
+            eq((Token::WhitespaceAndEnd, " \n", "a"))
+        );
+
+        expect_that!(read_token(" a"), eq((Token::Whitespace, " ", "a")));
+        expect_that!(read_token("\ta"), eq((Token::Whitespace, "\t", "a")));
+        expect_that!(read_token("\t a"), eq((Token::Whitespace, "\t ", "a")));
+
+        expect_that!(read_token(";a"), eq((Token::Comment, ";a", "")));
+        expect_that!(read_token(";a\n"), eq((Token::Comment, ";a\n", "")));
+        expect_that!(read_token(";a\nb"), eq((Token::Comment, ";a\n", "b")));
+
+        expect_that!(read_token("\"\""), eq((Token::StringLit, "\"\"", "")));
+        expect_that!(read_token("\"a\""), eq((Token::StringLit, "\"a\"", "")));
+        expect_that!(read_token("\"a\"b"), eq((Token::StringLit, "\"a\"", "b")));
+        // Multiline string
+        expect_that!(read_token("\"a\n\""), eq((Token::StringLit, "\"a\n\"", "")));
+        // Not closed quote
+        expect_that!(read_token("\"a\nb"), eq((Token::Invalid, "\"a\n", "b")));
     }
 }

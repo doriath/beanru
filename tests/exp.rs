@@ -75,20 +75,56 @@ fn parses_open_directive_with_inline_comment() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[googletest::test]
+fn parses_open_directive_with_pre_comment() -> anyhow::Result<()> {
+    let input = ";comment\n2023-01-02 open Assets:Test";
+    let f = File::parse("test.beancount", input)?;
+    expect_that!(f.filename(), eq("test.beancount"));
+    expect_that!(f.to_string(), eq(input));
+    assert_that!(*f.entries(), len(eq(1)));
+    let o = f.entries()[0]
+        .as_open()
+        .expect("entry is not an open directive");
+    expect_that!(*o.date(), eq(Date::from_ymd(2023, 1, 2).unwrap()));
+    expect_that!(*o.account(), eq("Assets:Test"));
+    Ok(())
+}
+
+#[googletest::test]
+fn parses_transaction() -> anyhow::Result<()> {
+    let input = "2023-01-02 txn";
+    let f = File::parse("test.beancount", input)?;
+    expect_that!(f.filename(), eq("test.beancount"));
+    expect_that!(f.to_string(), eq(input));
+    assert_that!(*f.entries(), len(eq(1)));
+    let t = f.entries()[0]
+        .as_transaction()
+        .expect("entry is not an transaction directive");
+    Ok(())
+}
+
 // #[googletest::test]
-// fn parses_open_directive_with_pre_comment() -> anyhow::Result<()> {
-//     let input = ";comment\n2023-01-02 open Assets:Test";
+// fn parses_transaction_with_narration() -> anyhow::Result<()> {
+//     let input = "2023-01-02 txn \"narration\"";
 //     let f = File::parse("test.beancount", input)?;
 //     expect_that!(f.filename(), eq("test.beancount"));
 //     expect_that!(f.to_string(), eq(input));
 //     assert_that!(*f.entries(), len(eq(1)));
-//     let o = f.entries()[0]
-//         .as_open()
-//         .expect("entry is not an open directive");
-//     expect_that!(*o.date(), eq(Date::from_ymd(2023, 1, 2).unwrap()));
-//     expect_that!(*o.account(), eq("Assets:Test"));
+//     let t = f.entries()[0]
+//         .as_transaction()
+//         .expect("entry is not an transaction directive");
 //     Ok(())
 // }
+
+#[googletest::test]
+fn parses_comments() -> anyhow::Result<()> {
+    let input = ";comment1\n;comment2\n";
+    let f = File::parse("test.beancount", input)?;
+    expect_that!(f.filename(), eq("test.beancount"));
+    expect_that!(f.to_string(), eq(input));
+    assert_that!(*f.entries(), len(eq(1)));
+    Ok(())
+}
 
 #[googletest::test]
 fn test_date_to_string() {
