@@ -104,8 +104,8 @@ fn parses_transaction() -> anyhow::Result<()> {
 }
 
 // #[googletest::test]
-// fn parses_transaction_with_narration() -> anyhow::Result<()> {
-//     let input = "2023-01-02 txn \"narration\"";
+// fn parses_transaction_with_space_and_newline() -> anyhow::Result<()> {
+//     let input = "2023-01-02 txn \n";
 //     let f = File::parse("test.beancount", input)?;
 //     expect_that!(f.filename(), eq("test.beancount"));
 //     expect_that!(f.to_string(), eq(input));
@@ -115,6 +115,19 @@ fn parses_transaction() -> anyhow::Result<()> {
 //         .expect("entry is not an transaction directive");
 //     Ok(())
 // }
+
+#[googletest::test]
+fn parses_transaction_with_narration() -> anyhow::Result<()> {
+    let input = "2023-01-02 txn \"narration\"";
+    let f = File::parse("test.beancount", input)?;
+    expect_that!(f.filename(), eq("test.beancount"));
+    expect_that!(f.to_string(), eq(input));
+    assert_that!(*f.entries(), len(eq(1)));
+    let t = f.entries()[0]
+        .as_transaction()
+        .expect("entry is not an transaction directive");
+    Ok(())
+}
 
 #[googletest::test]
 fn parses_comments() -> anyhow::Result<()> {

@@ -117,70 +117,139 @@ fn parse_directive_opt(content: &str, pre_comments: Vec<String>) -> Option<(Dire
             ))
         }
         "txn" | "*" => {
-            // let (ws2, r1) = read_ws1(r)?;
-
-            let (ws2, comment, r) = read_opt_inline_comment(r)?;
-
-            Some((
-                Directive::Transaction(Transaction {
-                    pre_comments,
-                    date,
-                    ws1: ws1.into(),
-                    typ: dir_type.into(),
-                    ws2: ws2.into(),
-                    narration: None,
-                    inline_comment: comment.into(),
-                }),
-                r,
-            ))
+            let mut lexer = Lexer::new(r);
+            parse_transaction(
+                &mut lexer,
+                pre_comments,
+                date,
+                WithWS::new(ws1, dir_type.into()),
+            )
+            .map(move |d| (d, lexer.remaining()))
         }
         _ => None,
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum Token {
-    /// At least one whitespace followed by character that is not an end of line.
-    Whitespace,
-    /// optional whitespaces followed by end of line or end of file
-    WhitespaceAndEnd,
-    Comment,
-    StringLit,
-    Invalid,
+fn parse_transaction<'a>(
+    lexer: &mut Lexer<'a>,
+    pre_comments: Vec<String>,
+    date: Date,
+    typ: WithWS<String>,
+) -> Option<Directive> {
+    // ((ws payee)? (ws narration))?(ws (link|tag))*(ws)?(comment)?eol
+    // Option<PayeeAndNarration>
+    // Vec<LinkAndTags>
+    // Option<WS>
+    // Comment<WS>
+    // EOL
+    // S ->
+    // S ->
+    //
+    // 1. ws
+    //    - eol
+    //    - comment + eol
+    //    - links_and_tags +
+    let mut t = Transaction {
+        pre_comments,
+        date,
+        typ,
+        narration: None,
+        ws_last: "".into(),
+        inline_comment: "".into(),
+    };
+    let ws2 = match lexer.read_token() {
+        Token::EOL(ws2) => {
+            t.ws_last = ws2.into();
+            return Some(Directive::Transaction(t));
+        }
+        Token::Whitespace(ws2) => ws2,
+        // TODO: comment is also allowed
+        _ => return None,
+    };
+    // string or links_and_tags
+    match lexer.read_token() {
+        Token::StringLit(s1) => match lexer.read_token() {
+            Token::EOL(ws3) => {
+                t.narration = Some(WithWS::new(ws2, s1.into()));
+                t.ws_last = ws3.into();
+                return Some(Directive::Transaction(t));
+            }
+            _ => todo!(),
+        },
+        _ => {
+            todo!();
+        }
+    }
 }
 
-fn read_token(content: &str) -> (Token, &str, &str) {
+#[derive(Debug, PartialEq, Eq)]
+enum Token<'a> {
+    /// At least one whitespace followed by character that is not an end of line.
+    Whitespace(&'a str),
+    /// End of line (or file)
+    EOL(&'a str),
+    /// Comment (does NOT include the new line)
+    Comment(&'a str),
+    StringLit(&'a str),
+    Invalid(&'a str),
+}
+
+struct Lexer<'a> {
+    input: &'a str,
+}
+
+impl<'a> Lexer<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Self { input }
+    }
+
+    fn read_token(&mut self) -> Token<'a> {
+        let (t, r) = read_token(self.input);
+        self.input = r;
+        t
+    }
+
+    fn remaining(&self) -> &'a str {
+        self.input
+    }
+}
+
+fn read_token(content: &str) -> (Token, &str) {
     let mut chars = content.char_indices();
     match chars.next() {
-        None => return (Token::WhitespaceAndEnd, "", ""),
+        None => return (Token::EOL(""), ""),
+        Some((p, c)) if c == '\n' => {
+            let (a, b) = content.split_at(p + 1);
+            (Token::EOL(a), b)
+        }
         Some((_, c)) if c == ' ' || c == '\t' => {
             for (p, c) in chars {
                 if c == ' ' || c == '\t' {
                     continue;
                 }
                 if c == '\n' {
-                    let (a, b) = content.split_at(p + 1);
-                    return (Token::WhitespaceAndEnd, a, b);
+                    let (a, b) = content.split_at(p);
+                    return (Token::Whitespace(a), b);
                 }
                 let (a, b) = content.split_at(p);
-                return (Token::Whitespace, a, b);
+                return (Token::Whitespace(a), b);
             }
-            (Token::WhitespaceAndEnd, content, "")
+            (Token::Whitespace(content), "")
         }
         Some((_, c)) if c == ';' => {
             let (a, b) = split_at_newline(content);
-            (Token::Comment, a, b)
+            (Token::Comment(a), b)
         }
         // TODO: add support for escaping the string
         Some((_, c)) if c == '"' => {
             for (p, c) in chars {
                 if c == '"' {
                     let (a, b) = content.split_at(p + 1);
-                    return (Token::StringLit, a, b);
+                    return (Token::StringLit(a), b);
                 }
             }
             let (a, b) = split_at_newline(content);
-            (Token::Invalid, a, b)
+            (Token::Invalid(a), b)
         }
         _ => todo!(),
     }
@@ -440,13 +509,15 @@ impl std::fmt::Display for Account {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Transaction {
     pre_comments: Vec<String>,
-    // date ws1 (txn|*) ws2 ?(?(payee ws3) (narration ws4)) (tag|link)* ?inline_comment
+    // date ws1 (txn|*) ?(?(ws2 payee) (ws3 narration)) (wsx tag|link)* ws_last ?inline_comment
     date: Date,
-    ws1: String,
     // txn || *
-    typ: String,
-    ws2: String,
-    narration: Option<String>,
+    // ws_pre_typ: String,
+    typ: WithWS<String>,
+
+    narration: Option<WithWS<String>>,
+
+    ws_last: String,
     inline_comment: String,
 }
 
@@ -454,22 +525,46 @@ impl Transaction {
     pub fn date(&self) -> &Date {
         &self.date
     }
-    pub fn narration(&self) -> &Option<String> {
-        &self.narration
+    pub fn narration(&self) -> Option<&String> {
+        self.narration.as_ref().map(|n| &n.v)
     }
 }
 
 impl ToString for Transaction {
     fn to_string(&self) -> String {
-        format!(
-            "{}{}{}{}{}{}",
+        let mut ret = format!(
+            "{}{}{}",
             self.pre_comments.join(""),
             self.date.to_string(),
-            self.ws1,
-            self.typ,
-            self.ws2,
-            self.inline_comment
-        )
+            self.typ.to_string()
+        );
+        if let Some(ref narration) = self.narration {
+            ret.push_str(&narration.to_string());
+        }
+        ret.push_str(&self.ws_last);
+        ret.push_str(&self.inline_comment);
+        ret
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct WithWS<T> {
+    pre_ws: String,
+    v: T,
+}
+
+impl<T> WithWS<T> {
+    fn new(pre_ws: impl Into<String>, v: T) -> Self {
+        Self {
+            pre_ws: pre_ws.into(),
+            v,
+        }
+    }
+}
+
+impl<T: ToString> ToString for WithWS<T> {
+    fn to_string(&self) -> String {
+        format!("{}{}", self.pre_ws, self.v.to_string())
     }
 }
 
@@ -650,28 +745,27 @@ mod tests {
 
     #[googletest::test]
     fn test_read_token() {
-        expect_that!(read_token(""), eq((Token::WhitespaceAndEnd, "", "")));
-        expect_that!(read_token(" "), eq((Token::WhitespaceAndEnd, " ", "")));
-        expect_that!(read_token(" \n"), eq((Token::WhitespaceAndEnd, " \n", "")));
-        expect_that!(
-            read_token(" \na"),
-            eq((Token::WhitespaceAndEnd, " \n", "a"))
-        );
+        expect_that!(read_token(""), eq((Token::EOL(""), "")));
+        expect_that!(read_token("\n"), eq((Token::EOL("\n"), "")));
+        expect_that!(read_token("\n\n"), eq((Token::EOL("\n"), "\n")));
 
-        expect_that!(read_token(" a"), eq((Token::Whitespace, " ", "a")));
-        expect_that!(read_token("\ta"), eq((Token::Whitespace, "\t", "a")));
-        expect_that!(read_token("\t a"), eq((Token::Whitespace, "\t ", "a")));
+        expect_that!(read_token(" \na"), eq((Token::Whitespace(" "), "\na")));
+        expect_that!(read_token(" "), eq((Token::Whitespace(" "), "")));
+        expect_that!(read_token(" \n"), eq((Token::Whitespace(" "), "\n")));
+        expect_that!(read_token(" a"), eq((Token::Whitespace(" "), "a")));
+        expect_that!(read_token("\ta"), eq((Token::Whitespace("\t"), "a")));
+        expect_that!(read_token("\t a"), eq((Token::Whitespace("\t "), "a")));
 
-        expect_that!(read_token(";a"), eq((Token::Comment, ";a", "")));
-        expect_that!(read_token(";a\n"), eq((Token::Comment, ";a\n", "")));
-        expect_that!(read_token(";a\nb"), eq((Token::Comment, ";a\n", "b")));
+        expect_that!(read_token(";a"), eq((Token::Comment(";a"), "")));
+        expect_that!(read_token(";a\n"), eq((Token::Comment(";a\n"), "")));
+        expect_that!(read_token(";a\nb"), eq((Token::Comment(";a\n"), "b")));
 
-        expect_that!(read_token("\"\""), eq((Token::StringLit, "\"\"", "")));
-        expect_that!(read_token("\"a\""), eq((Token::StringLit, "\"a\"", "")));
-        expect_that!(read_token("\"a\"b"), eq((Token::StringLit, "\"a\"", "b")));
+        expect_that!(read_token("\"\""), eq((Token::StringLit("\"\""), "")));
+        expect_that!(read_token("\"a\""), eq((Token::StringLit("\"a\""), "")));
+        expect_that!(read_token("\"a\"b"), eq((Token::StringLit("\"a\""), "b")));
         // Multiline string
-        expect_that!(read_token("\"a\n\""), eq((Token::StringLit, "\"a\n\"", "")));
+        expect_that!(read_token("\"a\n\""), eq((Token::StringLit("\"a\n\""), "")));
         // Not closed quote
-        expect_that!(read_token("\"a\nb"), eq((Token::Invalid, "\"a\n", "b")));
+        expect_that!(read_token("\"a\nb"), eq((Token::Invalid("\"a\n"), "b")));
     }
 }
