@@ -1,3 +1,5 @@
+pub mod transaction;
+use crate::exp::transaction::*;
 use chrono::{Datelike, NaiveDate};
 use itertools::Itertools;
 
@@ -61,7 +63,7 @@ fn parse_comments(content: &str) -> (Entry, &str) {
     let mut r = content;
     loop {
         match r.chars().next() {
-            Some(c) if c == ';' => {
+            Some(';') => {
                 let (line, r1) = split_at_newline(r);
                 r = r1;
                 comments.push(line.into());
@@ -69,7 +71,7 @@ fn parse_comments(content: &str) -> (Entry, &str) {
             Some(c) if c.is_numeric() => {
                 // TODO: optimize this clone
                 match parse_directive_opt(r, comments.clone()) {
-                    Some((d, r1)) => return (Entry::Directive(d), r1),
+                    Some((d, r1)) => return (Entry::Directive(d.into()), r1),
                     None => break,
                 }
             }
@@ -85,7 +87,7 @@ fn parse_directive(content: &str) -> (Entry, &str) {
             let (line, remaining) = split_at_newline(content);
             (Entry::InvalidLine(line.to_string()), remaining)
         }
-        Some((d, r)) => (Entry::Directive(d), r),
+        Some((d, r)) => (Entry::Directive(d.into()), r),
     }
 }
 
@@ -130,71 +132,21 @@ fn parse_directive_opt(content: &str, pre_comments: Vec<String>) -> Option<(Dire
     }
 }
 
-fn parse_transaction<'a>(
-    lexer: &mut Lexer<'a>,
-    pre_comments: Vec<String>,
-    date: Date,
-    typ: WithWS<String>,
-) -> Option<Directive> {
-    // ((ws payee)? (ws narration))?(ws (link|tag))*(ws)?(comment)?eol
-    // Option<PayeeAndNarration>
-    // Vec<LinkAndTags>
-    // Option<WS>
-    // Comment<WS>
-    // EOL
-    // S ->
-    // S ->
-    //
-    // 1. ws
-    //    - eol
-    //    - comment + eol
-    //    - links_and_tags +
-    let mut t = Transaction {
-        pre_comments,
-        date,
-        typ,
-        narration: None,
-        ws_last: "".into(),
-        inline_comment: "".into(),
-    };
-    let ws2 = match lexer.read_token() {
-        Token::EOL(ws2) => {
-            t.ws_last = ws2.into();
-            return Some(Directive::Transaction(t));
-        }
-        Token::Whitespace(ws2) => ws2,
-        // TODO: comment is also allowed
-        _ => return None,
-    };
-    // string or links_and_tags
-    match lexer.read_token() {
-        Token::StringLit(s1) => match lexer.read_token() {
-            Token::EOL(ws3) => {
-                t.narration = Some(WithWS::new(ws2, s1.into()));
-                t.ws_last = ws3.into();
-                return Some(Directive::Transaction(t));
-            }
-            _ => todo!(),
-        },
-        _ => {
-            todo!();
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 enum Token<'a> {
     /// At least one whitespace followed by character that is not an end of line.
     Whitespace(&'a str),
     /// End of line (or file)
-    EOL(&'a str),
+    Eol(&'a str),
     /// Comment (does NOT include the new line)
     Comment(&'a str),
     StringLit(&'a str),
     Invalid(&'a str),
+    Tag(&'a str),
+    Link(&'a str),
 }
 
-struct Lexer<'a> {
+pub(crate) struct Lexer<'a> {
     input: &'a str,
 }
 
@@ -217,10 +169,10 @@ impl<'a> Lexer<'a> {
 fn read_token(content: &str) -> (Token, &str) {
     let mut chars = content.char_indices();
     match chars.next() {
-        None => return (Token::EOL(""), ""),
-        Some((p, c)) if c == '\n' => {
+        None => return (Token::Eol(""), ""),
+        Some((p, '\n')) => {
             let (a, b) = content.split_at(p + 1);
-            (Token::EOL(a), b)
+            (Token::Eol(a), b)
         }
         Some((_, c)) if c == ' ' || c == '\t' => {
             for (p, c) in chars {
@@ -236,12 +188,12 @@ fn read_token(content: &str) -> (Token, &str) {
             }
             (Token::Whitespace(content), "")
         }
-        Some((_, c)) if c == ';' => {
+        Some((_, ';')) => {
             let (a, b) = split_at_newline(content);
             (Token::Comment(a), b)
         }
         // TODO: add support for escaping the string
-        Some((_, c)) if c == '"' => {
+        Some((_, '"')) => {
             for (p, c) in chars {
                 if c == '"' {
                     let (a, b) = content.split_at(p + 1);
@@ -250,6 +202,24 @@ fn read_token(content: &str) -> (Token, &str) {
             }
             let (a, b) = split_at_newline(content);
             (Token::Invalid(a), b)
+        }
+        Some((_, '#')) => {
+            for (p, c) in chars {
+                if !c.is_ascii_alphabetic() && c != '-' && c != '_' && c != '/' && c != '.' {
+                    let (a, b) = content.split_at(p);
+                    return (Token::Tag(a), b);
+                }
+            }
+            (Token::Tag(content), "")
+        }
+        Some((_, '^')) => {
+            for (p, c) in chars {
+                if !c.is_ascii_alphabetic() && c != '-' && c != '_' && c != '/' && c != '.' {
+                    let (a, b) = content.split_at(p);
+                    return (Token::Link(a), b);
+                }
+            }
+            (Token::Link(content), "")
         }
         _ => todo!(),
     }
@@ -403,7 +373,7 @@ impl ToString for File {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Entry {
     /// A directive (that starts with a date).
-    Directive(Directive),
+    Directive(Box<Directive>),
     /// An entry that does not start with a date.
     Pragma(Pragma),
     /// A comment block not attached to any directive.
@@ -507,43 +477,17 @@ impl std::fmt::Display for Account {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Transaction {
-    pre_comments: Vec<String>,
-    // date ws1 (txn|*) ?(?(ws2 payee) (ws3 narration)) (wsx tag|link)* ws_last ?inline_comment
-    date: Date,
-    // txn || *
-    // ws_pre_typ: String,
-    typ: WithWS<String>,
-
-    narration: Option<WithWS<String>>,
-
-    ws_last: String,
-    inline_comment: String,
+pub enum TagOrLink {
+    Tag(String),
+    Link(String),
 }
 
-impl Transaction {
-    pub fn date(&self) -> &Date {
-        &self.date
-    }
-    pub fn narration(&self) -> Option<&String> {
-        self.narration.as_ref().map(|n| &n.v)
-    }
-}
-
-impl ToString for Transaction {
+impl ToString for TagOrLink {
     fn to_string(&self) -> String {
-        let mut ret = format!(
-            "{}{}{}",
-            self.pre_comments.join(""),
-            self.date.to_string(),
-            self.typ.to_string()
-        );
-        if let Some(ref narration) = self.narration {
-            ret.push_str(&narration.to_string());
+        match self {
+            TagOrLink::Tag(x) => x.clone(),
+            TagOrLink::Link(x) => x.clone(),
         }
-        ret.push_str(&self.ws_last);
-        ret.push_str(&self.inline_comment);
-        ret
     }
 }
 
@@ -745,9 +689,9 @@ mod tests {
 
     #[googletest::test]
     fn test_read_token() {
-        expect_that!(read_token(""), eq((Token::EOL(""), "")));
-        expect_that!(read_token("\n"), eq((Token::EOL("\n"), "")));
-        expect_that!(read_token("\n\n"), eq((Token::EOL("\n"), "\n")));
+        expect_that!(read_token(""), eq((Token::Eol(""), "")));
+        expect_that!(read_token("\n"), eq((Token::Eol("\n"), "")));
+        expect_that!(read_token("\n\n"), eq((Token::Eol("\n"), "\n")));
 
         expect_that!(read_token(" \na"), eq((Token::Whitespace(" "), "\na")));
         expect_that!(read_token(" "), eq((Token::Whitespace(" "), "")));
@@ -766,6 +710,23 @@ mod tests {
         // Multiline string
         expect_that!(read_token("\"a\n\""), eq((Token::StringLit("\"a\n\""), "")));
         // Not closed quote
+        // TODO: I need to explore the best way to handle not closed quotes
         expect_that!(read_token("\"a\nb"), eq((Token::Invalid("\"a\n"), "b")));
+
+        expect_that!(read_token("#tag"), eq((Token::Tag("#tag"), "")));
+        expect_that!(read_token("#tag "), eq((Token::Tag("#tag"), " ")));
+        expect_that!(
+            read_token("#a-b.c_d/e "),
+            eq((Token::Tag("#a-b.c_d/e"), " "))
+        );
+        expect_that!(read_token("#tag;"), eq((Token::Tag("#tag"), ";")));
+
+        expect_that!(read_token("^link"), eq((Token::Link("^link"), "")));
+        expect_that!(read_token("^link "), eq((Token::Link("^link"), " ")));
+        expect_that!(
+            read_token("^a-b.c_d/e "),
+            eq((Token::Link("^a-b.c_d/e"), " "))
+        );
+        expect_that!(read_token("^link;"), eq((Token::Link("^link"), ";")));
     }
 }

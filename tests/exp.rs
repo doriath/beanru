@@ -92,29 +92,38 @@ fn parses_open_directive_with_pre_comment() -> anyhow::Result<()> {
 
 #[googletest::test]
 fn parses_transaction() -> anyhow::Result<()> {
-    let input = "2023-01-02 txn";
-    let f = File::parse("test.beancount", input)?;
-    expect_that!(f.filename(), eq("test.beancount"));
-    expect_that!(f.to_string(), eq(input));
-    assert_that!(*f.entries(), len(eq(1)));
-    let t = f.entries()[0]
-        .as_transaction()
-        .expect("entry is not an transaction directive");
+    let inputs = [
+        "2023-01-02 txn",
+        "2023-01-02 txn ",
+        "2023-01-02 txn \n",
+        "2023-01-02 txn;asdf",
+        "2023-01-02 txn ;asdf",
+        "2023-01-02 txn #a",
+        "2023-01-02 txn #a ",
+        "2023-01-02 txn #a;comment",
+        "2023-01-02 txn #a #b",
+        "2023-01-02 txn ^a",
+        "2023-01-02 txn ^a #b ^c",
+        "2023-01-02 txn \"narration\"",
+        "2023-01-02 txn \"narration\" ",
+        "2023-01-02 txn \"narration\" ;comment",
+        "2023-01-02 txn \"narration\" #a",
+        "2023-01-02 txn \"payee\" \"narration\"",
+        "2023-01-02 txn \"payee\" \"narration\" ^a",
+        "2023-01-02 txn \"payee\" \"narration\" ^a #b",
+        "2023-01-02 txn  \"payee\"   \"narration\"     ^a      #b",
+    ];
+    for input in inputs {
+        let f = File::parse("test.beancount", input)?;
+        expect_that!(f.filename(), eq("test.beancount"));
+        expect_that!(f.to_string(), eq(input));
+        assert_that!(*f.entries(), len(eq(1)));
+        f.entries()[0]
+            .as_transaction()
+            .unwrap_or_else(|| panic!("entry is not an transaction directive, input: {:?}", input));
+    }
     Ok(())
 }
-
-// #[googletest::test]
-// fn parses_transaction_with_space_and_newline() -> anyhow::Result<()> {
-//     let input = "2023-01-02 txn \n";
-//     let f = File::parse("test.beancount", input)?;
-//     expect_that!(f.filename(), eq("test.beancount"));
-//     expect_that!(f.to_string(), eq(input));
-//     assert_that!(*f.entries(), len(eq(1)));
-//     let t = f.entries()[0]
-//         .as_transaction()
-//         .expect("entry is not an transaction directive");
-//     Ok(())
-// }
 
 #[googletest::test]
 fn parses_transaction_with_narration() -> anyhow::Result<()> {
@@ -123,7 +132,7 @@ fn parses_transaction_with_narration() -> anyhow::Result<()> {
     expect_that!(f.filename(), eq("test.beancount"));
     expect_that!(f.to_string(), eq(input));
     assert_that!(*f.entries(), len(eq(1)));
-    let t = f.entries()[0]
+    f.entries()[0]
         .as_transaction()
         .expect("entry is not an transaction directive");
     Ok(())
