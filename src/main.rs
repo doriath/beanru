@@ -19,6 +19,9 @@ enum Commands {
     Normalize { input: String },
     /// Checks if all transactions are properly balanced.
     Check { input: String },
+    /// Checks all balance statements and tries to fix them.
+    /// This command is still WIP.
+    FixBalance { input: String },
     /// Performs stock split.
     StockSplit {
         /// The path to beancount file.
@@ -59,6 +62,10 @@ async fn main() -> anyhow::Result<()> {
         Commands::Check { input } => {
             let ledger = read_ledger(&input).await?;
             beanru::check(&ledger)?;
+        }
+        Commands::FixBalance { input } => {
+            let ledger = read_ledger(&input).await?;
+            beanru::fix_balance(&ledger)?;
         }
         Commands::StockSplit {
             input,
