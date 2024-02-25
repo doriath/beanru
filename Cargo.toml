@@ -14,7 +14,7 @@ authors = ["Tomasz Zurkowski <tomasz.zurkowski@gmail.com>"]
 
 [dependencies]
 anyhow = "1.0.0"
-beancount-parser = '2.0.0'
+beancount-parser = '2.1.0'
 chrono = "0.4.0"
 clap = { version = "4.3.4", features = ["derive"] }
 csv = "1"
