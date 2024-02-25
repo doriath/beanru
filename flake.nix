@@ -27,6 +27,7 @@
             lockFile = ./Cargo.lock;
           };
           src = pkgs.lib.cleanSource ./.;
+          buildFeatures = ["build-binary"];
           nativeBuildInputs = [
             pkgs.pkg-config
           ];
